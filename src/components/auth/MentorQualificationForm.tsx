@@ -72,13 +72,12 @@ export function MentorQualificationForm({ onSubmit }: MentorQualificationFormPro
   const { writeContract, isPending, error } = useWriteContract();
 
   async function ragistorMentor(_name , _mentorPrice) {
-    alert("hello")
     try {
       await writeContract({
         address: '0x93eC3AadBF6E65a93c48836Bd78da2860942620f',
         abi: abi,
         functionName: "ragistorMentor",
-        args: ["hello" , ethers.toBigInt(1)],
+        args: ["hello", ethers.toBigInt(1)],
       })
     } catch(err) {
       console.log("error from ragistor mentor: " , err);
