@@ -6,6 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Plus, CheckCircle } from "lucide-react";
+import { useReadContract, useWriteContract } from 'wagmi';
+import { ethers } from 'ethers';
+import { abi } from "../../abi/mentorshipAbi.ts";
 
 interface MentorQualificationFormProps {
   onSubmit: (qualifications: any) => void;
@@ -65,6 +68,22 @@ export function MentorQualificationForm({ onSubmit }: MentorQualificationFormPro
     };
     onSubmit(qualifications);
   };
+
+  const { writeContract, isPending, error } = useWriteContract();
+
+  async function ragistorMentor(_name , _mentorPrice) {
+    alert("hello")
+    try {
+      await writeContract({
+        address: '0x93eC3AadBF6E65a93c48836Bd78da2860942620f',
+        abi: abi,
+        functionName: "ragistorMentor",
+        args: ["hello" , ethers.toBigInt(1)],
+      })
+    } catch(err) {
+      console.log("error from ragistor mentor: " , err);
+    }
+  }
   
   const steps = [
     {
@@ -215,7 +234,7 @@ export function MentorQualificationForm({ onSubmit }: MentorQualificationFormPro
           <CardTitle>{steps[activeStep].title}</CardTitle>
           <CardDescription>{steps[activeStep].description}</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => {handleSubmit(e); ragistorMentor("mentor name" , 10)}}>
           <CardContent>{steps[activeStep].content}</CardContent>
           <CardFooter className="flex justify-between">
             <Button
