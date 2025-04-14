@@ -12,6 +12,8 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Bell, MessageSquare, Search, LogOut, User } from "lucide-react";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import '@rainbow-me/rainbowkit/styles.css';
 
 export function Navbar() {
   const { user, logout } = useUser();
@@ -117,6 +119,7 @@ export function Navbar() {
             <Link to="/signup">
               <Button>Sign up</Button>
             </Link>
+            <ConnectButton />
           </div>
         )}
       </div>
