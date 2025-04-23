@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Video, BookOpen, MessageSquare, Users, ChevronRight, Plus, User, X, Mic, MicOff, VideoOff, Image as ImageIcon, Droplet } from "lucide-react";
+import { Calendar, Clock, Video, BookOpen, MessageSquare, Users, ChevronRight, Plus, X, Mic, MicOff, VideoOff, Image as ImageIcon, Link2, FileText } from "lucide-react";
+import { MenteeTaskAssign } from "./MenteeTaskAssign";
+import { MenteeReportCard } from "./MenteeReportCard";
 
 export function MentorDashboard() {
   const [activeSessions, setActiveSessions] = useState(3);
@@ -20,12 +22,15 @@ export function MentorDashboard() {
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [backgroundMode, setBackgroundMode] = useState<"none" | "blur" | "image">("none");
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [postContent, setPostContent] = useState("");
+  const [postMedia, setPostMedia] = useState<File | null>(null);
+  const [postMediaPreview, setPostMediaPreview] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
-  // Request media permissions when modal opens
   useEffect(() => {
     if (videoModalOpen) {
       setMediaPermission("pending");
@@ -43,7 +48,6 @@ export function MentorDashboard() {
           setMediaError(err.message || "Permission denied");
         });
     } else {
-      // Stop all tracks when modal closes
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
@@ -57,7 +61,6 @@ export function MentorDashboard() {
     }
   }, [mediaPermission, videoEnabled, videoModalOpen]);
 
-  // Toggle video track
   useEffect(() => {
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getVideoTracks().forEach(track => {
@@ -66,7 +69,6 @@ export function MentorDashboard() {
     }
   }, [videoEnabled]);
 
-  // Toggle audio track
   useEffect(() => {
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getAudioTracks().forEach(track => {
@@ -75,7 +77,6 @@ export function MentorDashboard() {
     }
   }, [micEnabled]);
 
-  // Effect for background blur or image
   useEffect(() => {
     let animationFrame: number;
     if (
@@ -93,14 +94,12 @@ export function MentorDashboard() {
         if (ctx && video.readyState === 4) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           if (backgroundMode === "blur") {
-            // Blur background using CSS filter
             ctx.globalCompositeOperation = "destination-over";
             ctx.filter = "blur(16px)";
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.filter = "none";
             ctx.globalCompositeOperation = "source-over";
           } else if (backgroundMode === "image" && backgroundImage) {
-            // Draw background image
             const img = new window.Image();
             img.src = backgroundImage;
             img.onload = () => {
@@ -124,7 +123,6 @@ export function MentorDashboard() {
     }
   };
 
-  // Handler for background image upload
   const handleBackgroundImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setBackgroundImage(URL.createObjectURL(e.target.files[0]));
@@ -132,7 +130,13 @@ export function MentorDashboard() {
     }
   };
 
-  // Dummy data
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPostMedia(e.target.files[0]);
+      setPostMediaPreview(URL.createObjectURL(e.target.files[0]));
+    }
+  };
+
   const upcomingSessions = [
     {
       id: "1",
@@ -197,23 +201,33 @@ export function MentorDashboard() {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-10 animate-fade-in bg-gradient-to-br from-slate-50 to-white min-h-screen pb-16">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold">Mentor Dashboard</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-mentor-primary mb-1">Mentor Dashboard</h1>
+          <p className="text-muted-foreground text-base">Manage your mentees, sessions, and assignments in one place.</p>
+        </div>
         <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <Button className="w-full sm:w-auto">
+          <Button
+            className="w-full sm:w-auto bg-mentor-primary hover:bg-mentor-secondary shadow-md"
+            onClick={() => setVideoModalOpen(true)}
+          >
             <Video className="h-4 w-4 mr-2" />
             Create Live Session
           </Button>
-          <Button variant="outline" className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto border-mentor-primary text-mentor-primary hover:bg-mentor-primary/10"
+            onClick={() => setShowPostModal(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Post
           </Button>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="shadow-xl border-0 bg-white/90">
           <CardHeader className="pb-2">
             <CardDescription>Active Mentorships</CardDescription>
             <CardTitle className="text-3xl">{activeSessions}</CardTitle>
@@ -225,8 +239,7 @@ export function MentorDashboard() {
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
+        <Card className="shadow-xl border-0 bg-white/90">
           <CardHeader className="pb-2">
             <CardDescription>Pending Requests</CardDescription>
             <CardTitle className="text-3xl">{pendingRequests}</CardTitle>
@@ -238,8 +251,7 @@ export function MentorDashboard() {
             </div>
           </CardContent>
         </Card>
-        
-        <Card className="md:col-span-2 lg:col-span-1">
+        <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-slate-100 md:col-span-2 lg:col-span-1">
           <CardHeader className="pb-2">
             <CardDescription>Next Live Session</CardDescription>
             <CardTitle className="text-lg sm:text-xl truncate">{upcomingSessions[0].title}</CardTitle>
@@ -258,20 +270,20 @@ export function MentorDashboard() {
           </CardContent>
         </Card>
       </div>
-      
+
       <Tabs defaultValue="mentorship-requests" className="w-full">
-        <TabsList className="mb-4 w-full sm:w-auto flex flex-wrap">
-          <TabsTrigger value="mentorship-requests" className="flex-1 sm:flex-none">Mentorship Requests</TabsTrigger>
-          <TabsTrigger value="active-mentorships" className="flex-1 sm:flex-none">Active Mentorships</TabsTrigger>
-          <TabsTrigger value="upcoming-sessions" className="flex-1 sm:flex-none">Upcoming Sessions</TabsTrigger>
+        <TabsList className="mb-6 bg-white/80 shadow-sm rounded-lg">
+          <TabsTrigger value="mentorship-requests">Mentorship Requests</TabsTrigger>
+          <TabsTrigger value="active-mentorships">Active Mentorships</TabsTrigger>
+          <TabsTrigger value="upcoming-sessions">Upcoming Sessions</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="mentorship-requests" className="space-y-6">
           {menteeRequests.map((request) => (
-            <Card key={request.id} className="overflow-hidden">
+            <Card key={request.id} className="overflow-hidden shadow-md border-0 bg-gradient-to-br from-white to-slate-50">
               <div className="flex flex-col md:flex-row">
                 <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 w-full">
-                  <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-mentor-primary shadow">
                     <img src={request.avatar} alt={request.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 text-center sm:text-left">
@@ -287,21 +299,21 @@ export function MentorDashboard() {
                     <p className="text-sm">{request.message}</p>
                   </div>
                 </div>
-                <div className="p-4 sm:p-6 border-t md:border-t-0 md:border-l flex flex-row md:flex-col items-center justify-center gap-3">
-                  <Button className="flex-1 w-full">Accept</Button>
-                  <Button variant="outline" className="flex-1 w-full">Decline</Button>
+                <div className="p-4 sm:p-6 border-t md:border-t-0 md:border-l flex flex-row md:flex-col items-center justify-center gap-3 bg-slate-50">
+                  <Button className="flex-1 w-full bg-mentor-primary text-white">Accept</Button>
+                  <Button variant="outline" className="flex-1 w-full border-mentor-primary text-mentor-primary">Decline</Button>
                   <Button variant="ghost" size="sm" className="w-full">View Profile</Button>
                 </div>
               </div>
             </Card>
           ))}
         </TabsContent>
-        
+
         <TabsContent value="active-mentorships" className="space-y-6">
           {activeMentorships.map((mentorship) => (
-            <Card key={mentorship.id}>
+            <Card key={mentorship.id} className="shadow-md border-0 bg-gradient-to-br from-white to-slate-50">
               <div className="flex flex-col sm:flex-row items-center p-4 sm:p-6 gap-4">
-                <div className="w-12 h-12 rounded-full overflow-hidden">
+                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-mentor-primary shadow">
                   <img src={mentorship.avatar} alt={mentorship.mentee} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 text-center sm:text-left">
@@ -328,10 +340,10 @@ export function MentorDashboard() {
             </Card>
           ))}
         </TabsContent>
-        
+
         <TabsContent value="upcoming-sessions" className="space-y-6">
           {upcomingSessions.map((session) => (
-            <Card key={session.id}>
+            <Card key={session.id} className="shadow-md border-0 bg-gradient-to-br from-white to-slate-50">
               <div className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <div>
@@ -353,20 +365,20 @@ export function MentorDashboard() {
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <Button
-                      className="flex-1 sm:flex-none"
+                      className="flex-1 sm:flex-none bg-mentor-primary text-white"
                       onClick={() => setVideoModalOpen(true)}
                     >
                       <Video className="h-4 w-4 mr-2" />
                       Start Session
                     </Button>
-                    <Button variant="outline" className="flex-1 sm:flex-none">Edit</Button>
+                    <Button variant="outline" className="flex-1 sm:flex-none border-mentor-primary text-mentor-primary">Edit</Button>
                   </div>
                 </div>
               </div>
             </Card>
           ))}
           <div className="flex justify-center">
-            <Button variant="outline">
+            <Button variant="outline" className="border-mentor-primary text-mentor-primary">
               <Plus className="h-4 w-4 mr-2" />
               Add New Session
             </Button>
@@ -374,11 +386,136 @@ export function MentorDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Video Call Modal */}
+      <div className="mt-10">
+        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <Users className="h-6 w-6 text-mentor-primary" />
+          Mentee Management & Progress
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activeMentorships.map((mentee) => (
+            <Card key={mentee.id} className="shadow-xl border-0 bg-gradient-to-br from-white to-slate-100">
+              <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-mentor-primary shadow">
+                  <img src={mentee.avatar} alt={mentee.mentee} className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">{mentee.mentee}</CardTitle>
+                  <CardDescription>Progress: <span className="font-semibold">{mentee.progress}%</span></CardDescription>
+                  <div className="w-32 bg-muted-foreground/20 rounded-full h-2 mt-2">
+                    <div
+                      className="bg-mentor-primary h-2 rounded-full"
+                      style={{ width: `${mentee.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    className="bg-mentor-primary text-white"
+                    onClick={() => alert('Open Assign Task Modal (implement modal for real use)')}
+                  >
+                    + Assign Task/Assessment
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-mentor-primary text-mentor-primary"
+                    onClick={() => alert('Navigate to detailed report card page (implement navigation for real use)')}
+                  >
+                    View Report Card & Stats
+                  </Button>
+                </div>
+                <div className="mt-4">
+                  <div className="text-sm font-semibold mb-1">Recent Assignments/Assessments</div>
+                  <ul className="space-y-1">
+                    <li className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-blue-500" />
+                      <span>Quiz: Product Metrics</span>
+                      <Badge className="ml-2 bg-green-100 text-green-700 border-green-300">Completed</Badge>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-yellow-500" />
+                      <span>Assignment: Case Study</span>
+                      <Badge className="ml-2 bg-yellow-100 text-yellow-700 border-yellow-300">Pending</Badge>
+                    </li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {showPostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 relative animate-fade-in">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
+              onClick={() => setShowPostModal(false)}
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <FileText className="h-7 w-7 text-mentor-primary" />
+              <h2 className="text-xl font-bold">Create a Post</h2>
+            </div>
+            <textarea
+              className="w-full border rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-mentor-primary mb-4 resize-none min-h-[100px]"
+              placeholder="What do you want to talk about?"
+              value={postContent}
+              onChange={e => setPostContent(e.target.value)}
+              maxLength={1000}
+            />
+            {postMediaPreview && (
+              <div className="mb-4">
+                <img
+                  src={postMediaPreview}
+                  alt="Preview"
+                  className="max-h-48 rounded-lg border mx-auto"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-4 mb-4">
+              <label className="flex items-center gap-2 cursor-pointer text-mentor-primary hover:text-mentor-secondary">
+                <ImageIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">Add Image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleMediaChange}
+                />
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-mentor-primary hover:text-mentor-secondary">
+                <Link2 className="h-5 w-5" />
+                <span className="text-sm font-medium">Add Link</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled
+                />
+              </label>
+            </div>
+            <Button
+              className="w-full bg-mentor-primary text-white"
+              onClick={() => {
+                setShowPostModal(false);
+                setPostContent("");
+                setPostMedia(null);
+                setPostMediaPreview(null);
+                alert("Post submitted!");
+              }}
+              disabled={!postContent.trim() && !postMedia}
+            >
+              Post
+            </Button>
+          </div>
+        </div>
+      )}
+
       {videoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
           <div className="absolute inset-0 w-full h-full flex flex-col">
-            {/* Top Bar */}
             <div className="flex items-center justify-between px-8 py-4 bg-gradient-to-b from-black/80 to-transparent z-10">
               <div className="flex items-center gap-3">
                 <Video className="h-6 w-6 text-white" />
@@ -392,9 +529,7 @@ export function MentorDashboard() {
                 <X className="h-7 w-7" />
               </button>
             </div>
-            {/* Main Content */}
             <div className="flex-1 flex flex-row relative overflow-hidden">
-              {/* Video Section */}
               <div className={`flex-1 flex items-center justify-center transition-all duration-300 ${showChat ? "hidden md:flex" : "flex"}`}>
                 <div className="relative w-full h-full flex items-center justify-center">
                   <div className="absolute inset-0 bg-black flex items-center justify-center overflow-hidden rounded-none shadow-none border-none">
@@ -428,7 +563,6 @@ export function MentorDashboard() {
                         </div>
                       )
                     )}
-                    {/* Mini self-view (bottom right) */}
                     {mediaPermission === "granted" && (
                       <div className="absolute bottom-6 right-6 w-32 h-24 rounded-lg overflow-hidden border-2 border-white bg-black/70 flex items-center justify-center shadow-lg">
                         <img
@@ -441,7 +575,6 @@ export function MentorDashboard() {
                   </div>
                 </div>
               </div>
-              {/* Chat Section */}
               {showChat && (
                 <div className="w-full md:w-96 h-full bg-white flex flex-col border-l border-gray-200 shadow-2xl z-20">
                   <div className="flex items-center justify-between p-4 border-b bg-gray-50">
@@ -482,7 +615,6 @@ export function MentorDashboard() {
                 </div>
               )}
             </div>
-            {/* Controls */}
             <div className="w-full flex flex-wrap justify-center items-center gap-4 py-6 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 z-10">
               <Button
                 className={`rounded-full px-6 py-3 shadow-lg text-lg ${videoEnabled ? "bg-white text-black hover:bg-gray-200" : "bg-gray-700 text-white"}`}
