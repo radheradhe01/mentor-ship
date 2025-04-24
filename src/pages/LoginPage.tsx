@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
 import { Navbar } from "@/components/Navbar";
@@ -12,33 +11,45 @@ import { useToast } from "@/components/ui/use-toast";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
-  const [userType, setUserType] = useState<'mentor' | 'mentee'>('mentee');
-  const { login } = useUser();
+  const [password, setPassword] = useState("");
+  const { login, loading, user, profile } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  useEffect(() => {
+    if (user && profile) {
+      toast({ title: "Already Logged In", description: "Redirecting to your dashboard..." });
+      navigate(profile.user_type === 'mentor' ? "/mentor/dashboard" : "/mentee/dashboard");
+    }
+  }, [user, profile, navigate, toast]);
+
+  useEffect(() => {
+    if (user && profile && !loading) {
+      toast({
+        title: "Logged in successfully!",
+        description: `Welcome back, ${profile.name || user.email}! Redirecting...`,
+      });
+      navigate(profile.user_type === 'mentor' ? "/mentor/dashboard" : "/mentee/dashboard");
+    }
+  }, [user, profile, loading, navigate, toast]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email.trim()) {
+
+    if (!email.trim() || !password.trim()) {
       toast({
         title: "Error",
-        description: "Please enter your email",
+        description: "Please enter both email and password",
         variant: "destructive",
       });
       return;
     }
-    
-    login(email, userType);
-    
-    toast({
-      title: "Logged in successfully!",
-      description: `Welcome back to MentorSpark as a ${userType}.`,
-    });
-    
-    setTimeout(() => {
-      navigate(userType === 'mentor' ? "/mentor/dashboard" : "/mentee/dashboard");
-    }, 1000);
+
+    try {
+      await login(email, password);
+    } catch (error) {
+      console.error("Login failed in component:", error);
+    }
   };
 
   return (
@@ -48,56 +59,47 @@ const LoginPage = () => {
         <Card className="w-full max-w-md mx-4 animate-fade-in">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Login to MentorSpark</CardTitle>
-            <CardDescription>Enter your email to sign in to your account</CardDescription>
+            <CardDescription>Enter your email and password to sign in</CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="example@email.com" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>User Type</Label>
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant={userType === 'mentor' ? 'default' : 'outline'}
-                    className={userType === 'mentor' ? 'bg-mentor-primary hover:bg-mentor-secondary' : ''}
-                    onClick={() => setUserType('mentor')}
-                  >
-                    Mentor
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={userType === 'mentee' ? 'default' : 'outline'}
-                    className={userType === 'mentee' ? 'bg-mentee-primary hover:bg-mentee-secondary' : ''}
-                    onClick={() => setUserType('mentee')}
-                  >
-                    Mentee
-                  </Button>
+          {!user && (
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                type="submit" 
-                className="w-full"
-                style={{ 
-                  backgroundColor: userType === 'mentor' ? '#9b87f5' : '#33C3F0',
-                  borderColor: userType === 'mentor' ? '#9b87f5' : '#33C3F0',
-                }}
-              >
-                Login
-              </Button>
-            </CardFooter>
-          </form>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? "Logging in..." : "Login"}
+                </Button>
+              </CardFooter>
+            </form>
+          )}
         </Card>
       </main>
       <Footer />

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +5,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Plus, CheckCircle } from "lucide-react";
-import { useReadContract, useWriteContract } from 'wagmi';
+import { useWriteContract } from 'wagmi';
 import { ethers } from 'ethers';
 import { abi } from "../../abi/mentorshipAbi.ts";
+import { useToast } from "@/components/ui/use-toast";
 
 interface MentorQualificationFormProps {
   onSubmit: (qualifications: any) => void;
@@ -22,45 +22,74 @@ export function MentorQualificationForm({ onSubmit }: MentorQualificationFormPro
     achievements: [""],
     experience: "",
     mentorshipExperience: "",
+    mentorPrice: "0.01",
   });
-  
+
   const [activeStep, setActiveStep] = useState(0);
-  const totalSteps = 3;
-  
+  const totalSteps = 4;
+  const { toast } = useToast();
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-  
+
   const handleAchievementChange = (index: number, value: string) => {
     const newAchievements = [...formData.achievements];
     newAchievements[index] = value;
     setFormData(prev => ({ ...prev, achievements: newAchievements }));
   };
-  
+
   const addAchievement = () => {
     setFormData(prev => ({
       ...prev,
       achievements: [...prev.achievements, ""]
     }));
   };
-  
+
   const removeAchievement = (index: number) => {
     const newAchievements = formData.achievements.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, achievements: newAchievements }));
   };
-  
+
   const nextStep = () => {
     setActiveStep(prev => Math.min(prev + 1, totalSteps - 1));
   };
-  
+
   const prevStep = () => {
     setActiveStep(prev => Math.max(prev - 1, 0));
   };
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const { writeContract, isPending, error: writeContractError } = useWriteContract();
+
+  async function registerMentorOnChain(name: string, price: string) {
+    try {
+      const priceInWei = ethers.parseEther(price);
+      await writeContract({
+        address: '0x93eC3AadBF6E65a93c48836Bd78da2860942620f',
+        abi: abi,
+        functionName: "ragistorMentor",
+        args: [name, priceInWei],
+      });
+      toast({ title: "Blockchain Transaction Sent", description: "Mentor registration submitted to the blockchain." });
+      return true;
+    } catch (err: any) {
+      console.error("Error registering mentor on chain: ", err);
+      const message = err.shortMessage || err.message || "An unknown error occurred.";
+      toast({ title: "Blockchain Error", description: `Failed to register mentor on-chain: ${message}`, variant: "destructive" });
+      return false;
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Filter out empty achievements
+
+    const registrationSuccess = await registerMentorOnChain(formData.name, formData.mentorPrice);
+
+    if (!registrationSuccess) {
+      return;
+    }
+
     const filteredAchievements = formData.achievements.filter(a => a.trim() !== "");
     const qualifications = {
       ...formData,
@@ -69,21 +98,6 @@ export function MentorQualificationForm({ onSubmit }: MentorQualificationFormPro
     onSubmit(qualifications);
   };
 
-  const { writeContract, isPending, error } = useWriteContract();
-
-  async function ragistorMentor(_name , _mentorPrice) {
-    try {
-      await writeContract({
-        address: '0x93eC3AadBF6E65a93c48836Bd78da2860942620f',
-        abi: abi,
-        functionName: "ragistorMentor",
-        args: ["hello", ethers.toBigInt(1)],
-      })
-    } catch(err) {
-      console.log("error from ragistor mentor: " , err);
-    }
-  }
-  
   const steps = [
     {
       title: "Basic Information",
@@ -193,8 +207,30 @@ export function MentorQualificationForm({ onSubmit }: MentorQualificationFormPro
         </div>
       ),
     },
+    {
+      title: "Mentorship Price",
+      description: "Set your price per mentorship session (in ETH)",
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="mentorPrice">Price (ETH)</Label>
+            <Input
+              id="mentorPrice"
+              name="mentorPrice"
+              type="number"
+              step="0.001"
+              min="0"
+              value={formData.mentorPrice}
+              onChange={handleInputChange}
+              placeholder="e.g., 0.05"
+              required
+            />
+          </div>
+        </div>
+      ),
+    },
   ];
-  
+
   return (
     <div className="mx-auto max-w-md space-y-6 py-10 animate-fade-in">
       <div className="flex mb-8 justify-center">
@@ -227,34 +263,45 @@ export function MentorQualificationForm({ onSubmit }: MentorQualificationFormPro
             </div>
           ))}
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>{steps[activeStep].title}</CardTitle>
           <CardDescription>{steps[activeStep].description}</CardDescription>
         </CardHeader>
-        <form onSubmit={(e) => {handleSubmit(e); ragistorMentor("mentor name" , 10)}}>
-          <CardContent>{steps[activeStep].content}</CardContent>
-          <CardFooter className="flex justify-between">
+        <CardContent>{steps[activeStep].content}</CardContent>
+        <CardFooter className="flex justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={prevStep}
+            disabled={activeStep === 0 || isPending}
+          >
+            Previous
+          </Button>
+          {activeStep === totalSteps - 1 ? (
             <Button
               type="button"
-              variant="outline"
-              onClick={prevStep}
-              disabled={activeStep === 0}
+              onClick={handleSubmit}
+              className="bg-mentor-primary hover:bg-mentor-secondary"
+              disabled={isPending}
             >
-              Previous
+              {isPending ? "Submitting..." : "Complete Profile"}
             </Button>
-            {activeStep === totalSteps - 1 ? (
-              <Button type="submit" className="bg-mentor-primary hover:bg-mentor-secondary">
-                Complete Profile
-              </Button>
-            ) : (
-              <Button type="button" onClick={nextStep} className="bg-mentor-primary hover:bg-mentor-secondary">
-                Next
-              </Button>
-            )}
-          </CardFooter>
-        </form>
+          ) : (
+            <Button
+              type="button"
+              onClick={nextStep}
+              className="bg-mentor-primary hover:bg-mentor-secondary"
+              disabled={isPending}
+            >
+              Next
+            </Button>
+          )}
+        </CardFooter>
+        {writeContractError && (
+          <p className="text-xs text-red-500 px-6 pb-4">Error: {writeContractError.shortMessage || writeContractError.message}</p>
+        )}
       </Card>
     </div>
   );
