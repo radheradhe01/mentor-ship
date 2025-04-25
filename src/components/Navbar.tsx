@@ -45,6 +45,17 @@ export function Navbar() {
               >
                 Dashboard
               </Link>
+              {user.userType === "mentee" && (
+                <a
+                  href="/games.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                  style={{ display: 'flex', alignItems: 'center' }}
+                >
+                  Games
+                </a>
+              )}
               <Link
                 to="/explore"
                 className="text-sm font-medium transition-colors hover:text-primary"

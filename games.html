@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monadic Mini-Games</title>
+    <style>
+        /* Basic Styling */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Nicer font stack */
+            background-color: white;
+            color: black;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(to bottom, #eef1f5, #ffffff); /* Subtle gradient background */
+        }
+        .container { /* General container style for menu & games */
+            text-align: center;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+             box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for all containers */
+             width: 90%;
+             max-width: 700px; /* Limit max width */
+             margin-top: 20px; /* Add some space from top */
+             margin-bottom: 20px;
+        }
+        .game-area {
+            margin-top: 20px;
+            border: 1px solid black;
+            position: relative; /* Needed for absolute positioning inside */
+            overflow: hidden; /* Hide elements moving outside */
+             background-color: white; /* Ensure game areas have distinct background if needed */
+        }
+
+        /* --- Menu Specific Styles --- */
+        #menuContainer {
+            background-color: #ffffff; /* Clean white background for menu */
+            border: 1px solid #d6eaff; /* Light blue border */
+            border-radius: 12px; /* More rounded corners */
+            padding: 35px 45px; /* More padding */
+            box-shadow: 0 5px 15px rgba(0, 86, 179, 0.15); /* Slightly stronger, bluish shadow */
+            max-width: 550px; /* Constrain menu width */
+        }
+        #menuContainer h1 {
+            color: #0056b3; /* Dark blue heading */
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 2.2em; /* Larger heading */
+        }
+        #menuContainer p {
+            color: #4a6f8a; /* Softer text color */
+            font-size: 1.1em;
+            margin-bottom: 30px; /* More space before buttons */
+            line-height: 1.5;
+        }
+        #menuContainer button {
+            background: linear-gradient(to bottom, #007bff, #0056b3); /* Blue gradient */
+            color: white;
+            border: none;
+            border-radius: 25px; /* Pill-shaped buttons */
+            padding: 12px 30px; /* More padding */
+            font-size: 1.1em; /* Slightly larger font */
+            font-weight: 500;
+            margin: 10px 8px; /* More vertical margin */
+            cursor: pointer;
+            transition: all 0.3s ease; /* Smooth transition for multiple properties */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: inline-block; /* Ensure proper layout */
+            min-width: 180px; /* Minimum width for consistency */
+        }
+        #menuContainer button:hover {
+            background: linear-gradient(to bottom, #0069d9, #004ca0); /* Slightly darker gradient on hover */
+            transform: translateY(-2px); /* Lift effect */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+         #menuContainer button:active {
+             transform: translateY(0px); /* Press down effect */
+              box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+         }
+
+        #menuContainer .score-display {
+            margin-top: 35px; /* More space above score */
+            font-size: 0.95em;
+            color: #555;
+            border-top: 1px solid #e0e0e0; /* Lighter separator line */
+            padding-top: 20px;
+        }
+        /* --- End Menu Specific Styles --- */
+
+
+        /* --- General Game Styles (remain mostly the same) --- */
+        #flappyBirdArea {
+            width: 400px;
+            height: 500px;
+            background-color: skyblue;
+        }
+        #puzzleArea {
+            width: 320px; /* 4 * 80px */
+            height: 320px;
+            background-color: #eee;
+            display: grid;
+            grid-template-columns: repeat(4, 80px);
+            grid-template-rows: repeat(4, 80px);
+            gap: 1px;
+            border: 1px solid #999;
+            position: relative; /* Context for absolute positioned tiles */
+             margin-left: auto; /* Center puzzle grid */
+            margin-right: auto;
+        }
+         .puzzle-tile {
+            background-color: lightcoral;
+            border: 1px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none; /* Prevent text selection */
+            transition: transform 0.2s ease-in-out; /* Smooth sliding */
+            position: absolute; /* Allow movement */
+            width: 78px; /* Slightly less than cell size for gap */
+            height: 78px;
+            border-radius: 4px; /* Slightly rounded tiles */
+        }
+        .empty-tile {
+            background-color: transparent;
+            border: none;
+            cursor: default;
+             visibility: hidden; /* Make it invisible but take space */
+        }
+        #dinoRunnerArea {
+            width: 600px;
+            height: 200px;
+            background-color: #f7f7f7;
+            border-bottom: 1px solid #333; /* Ground line */
+        }
+        canvas {
+            display: block; /* Remove extra space below canvas */
+            background-color: inherit; /* Inherit background from parent */
+        }
+
+        /* General Button Style (for games, overridden by menu styles above for menu buttons) */
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #efefef; /* Default background for game buttons */
+             transition: background-color 0.2s ease;
+        }
+        button:hover {
+            background-color: #ddd; /* Default hover for game buttons */
+        }
+         /* Ensure game start/restart buttons below game area have enough space */
+        .game-container button {
+            margin-top: 15px;
+        }
+
+        .hidden {
+            display: none;
+        }
+        .score-display { /* General score style for games */
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .game-container { /* Keep this class for game containers */
+             /* Styles moved to .container apply here too */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menuContainer" class="container">
+        <h1>Game Menu</h1>
+        <p>Select a game to play:</p>
+        <button onclick="showGame('flappyBirdContainer', setupFlappyBird)">Flappy Flyer</button>
+        <button onclick="showGame('puzzleContainer', setupPuzzle)">Numeric Slider</button>
+        <button onclick="showGame('dinoRunnerContainer', setupDinoRunner)">Pixel Hopper</button>
+         <div class="score-display">
+             Session Total Score: <span id="sessionTotalScore">0</span> |
+             Session Highest Score: <span id="sessionHighestScore">0</span>
+         </div>
+    </div>
+
+    <div id="flappyBirdContainer" class="container game-container hidden">
+        <h2>Flappy Flyer</h2>
+        <div id="flappyBirdArea" class="game-area">
+            <canvas id="flappyCanvas"></canvas>
+        </div>
+        <div class="score-display">Score: <span id="flappyScore">0</span></div>
+         <div class="score-display" id="flappyTime" style="display:none;">Time: <span id="flappyTimerValue">0</span>s</div> <button id="flappyStartBtn" onclick="flappyGame.start()">Start</button>
+        <button id="flappyRestartBtn" onclick="flappyGame.restart()" class="hidden">Restart</button>
+        <button onclick="showMenu()">Back to Menu</button>
+    </div>
+
+    <div id="puzzleContainer" class="container game-container hidden">
+        <h2>Numeric Slider (Lower time is better)</h2>
+        <div id="puzzleArea" class="game-area">
+            </div>
+         <div class="score-display">Moves: <span id="puzzleMoves">0</span></div>
+         <div class="score-display">Time: <span id="puzzleTime">0</span>s</div>
+         <div class="score-display" id="puzzleHighScore" style="display:none;">Best Time: <span id="puzzleBestTime">N/A</span></div>
+        <button id="puzzleStartBtn" onclick="puzzleGame.start()">Start</button>
+        <button id="puzzleRestartBtn" onclick="puzzleGame.restart()" class="hidden">Restart</button>
+        <button onclick="showMenu()">Back to Menu</button>
+    </div>
+
+    <div id="dinoRunnerContainer" class="container game-container hidden">
+        <h2>Pixel Hopper</h2>
+        <div id="dinoRunnerArea" class="game-area">
+             <canvas id="dinoCanvas"></canvas>
+        </div>
+        <div class="score-display">Score: <span id="dinoScore">0</span></div>
+         <div class="score-display" id="dinoTime" style="display:none;">Time: <span id="dinoTimerValue">0</span>s</div> <button id="dinoStartBtn" onclick="dinoGame.start()">Start</button>
+        <button id="dinoRestartBtn" onclick="dinoGame.restart()" class="hidden">Restart</button>
+        <button onclick="showMenu()">Back to Menu</button>
+    </div>
+
+    <script>
+        // --- Backend Sim ---
+
+        let sessionTotalScore = 0;
+        let sessionHighestScore = 0;
+
+        // Placeholder backend function
+        // In a real application, this would use 'fetch' or similar
+        // to send data to a server running the actual backend logic.
+        function bhavesh_backend(totalPoints, highestPoints) {
+            console.log(`--- Sending data to bhavesh_backend ---`);
+            console.log(`Session Total Points: ${totalPoints}`);
+            console.log(`Session Highest Points: ${highestPoints}`);
+            console.log(`--------------------------------------`);
+            // Simulate an asynchronous operation with a Promise
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    console.log("Backend simulation complete.");
+                    resolve({ status: 'success', message: 'Data received (simulated)' });
+                }, 50); // Simulate network delay
+            });
+        }
+
+        function updateSessionScores(gameScore) {
+            sessionTotalScore += gameScore;
+            if (gameScore > sessionHighestScore) {
+                sessionHighestScore = gameScore;
+            }
+            // Update display
+            document.getElementById('sessionTotalScore').textContent = sessionTotalScore;
+            document.getElementById('sessionHighestScore').textContent = sessionHighestScore;
+
+            // Call the backend function (async)
+             bhavesh_backend(sessionTotalScore, sessionHighestScore)
+                .then(response => console.log("Backend response:", response))
+                .catch(error => console.error("Backend error (simulated):", error));
+        }
+
+         function updateSessionScoresPuzzle(timeScore) {
+             const points = Math.max(100, 10000 - Math.floor(timeScore * 10));
+
+             sessionTotalScore += points;
+             if (points > sessionHighestScore) {
+                 sessionHighestScore = points;
+             }
+             document.getElementById('sessionTotalScore').textContent = sessionTotalScore;
+             document.getElementById('sessionHighestScore').textContent = sessionHighestScore;
+
+             bhavesh_backend(sessionTotalScore, sessionHighestScore)
+                 .then(response => console.log("Backend response:", response))
+                 .catch(error => console.error("Backend error (simulated):", error));
+         }
+
+
+        // --- Menu Nav ---
+
+        function showGame(gameId, setupFunction) {
+            document.getElementById('menuContainer').classList.add('hidden');
+            // Hide all game containers first
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.add('hidden');
+                 // Reset potential game over states visually if needed when switching
+                const restartBtn = container.querySelector('[id$="RestartBtn"]');
+                const startBtn = container.querySelector('[id$="StartBtn"]');
+                 if(restartBtn) restartBtn.classList.add('hidden');
+                 if(startBtn) startBtn.classList.remove('hidden');
+            });
+            // Show the selected game container
+            const gameContainer = document.getElementById(gameId);
+            if (gameContainer) { // Maybe Monad Concept: Check if element exists
+                gameContainer.classList.remove('hidden');
+                // Run setup function for the game (e.g., resize canvas)
+                if (typeof setupFunction === 'function') {
+                   setupFunction();
+                }
+            } else {
+                console.error("Game container not found:", gameId);
+            }
+        }
+
+        function showMenu() {
+             // Stop any active game loops before going to menu
+            if (flappyGame && flappyGame.animationFrameId) cancelAnimationFrame(flappyGame.animationFrameId);
+            if (dinoGame && dinoGame.animationFrameId) cancelAnimationFrame(dinoGame.animationFrameId);
+            if (puzzleGame && puzzleGame.timerInterval) clearInterval(puzzleGame.timerInterval);
+
+            flappyGame.isRunning = false;
+            dinoGame.isRunning = false;
+            puzzleGame.isRunning = false;
+
+
+            document.getElementById('menuContainer').classList.remove('hidden');
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.add('hidden');
+            });
+        }
+
+        // --- Game Logic Placeholder Objects ---
+        
+        let flappyGame = {};
+        let puzzleGame = {};
+        let dinoGame = {};
+
+       // --- Game 1: Flappy Bird ---
+
+        function setupFlappyBird() {
+            const canvas = document.getElementById('flappyCanvas');
+            const ctx = canvas.getContext('2d');
+            const gameArea = document.getElementById('flappyBirdArea');
+            canvas.width = gameArea.clientWidth;
+            canvas.height = gameArea.clientHeight;
+
+            const scoreElement = document.getElementById('flappyScore');
+            const startBtn = document.getElementById('flappyStartBtn');
+            const restartBtn = document.getElementById('flappyRestartBtn');
+
+             // Game State (State Monad Concept: encapsulating state)
+             let state = {
+                bird: { x: 50, y: canvas.height / 2, width: 20, height: 20, velocity: 0, gravity: 0.2, jump: -5 },
+                pipes: [],
+                pipeWidth: 50,
+                pipeGap: 120,
+                pipeSpeed: 2,
+                pipeSpawnTimer: 0,
+                pipeSpawnInterval: 150, // frames
+                score: 0,
+                isGameOver: false,
+                isRunning: false,
+                animationFrameId: null
+             };
+
+             // --- Monadic-like State Update Function ---
+             // Takes current state, performs action, returns new state
+             function updateState(currentState) {
+                 if (!currentState.isRunning || currentState.isGameOver) return currentState;
+
+                 let newState = JSON.parse(JSON.stringify(currentState)); // Deep copy
+
+                 // Bird physics
+                 newState.bird.velocity += newState.bird.gravity;
+                 newState.bird.y += newState.bird.velocity;
+
+                 // Ground/Ceiling collision
+                 if (newState.bird.y + newState.bird.height > canvas.height || newState.bird.y < 0) {
+                     newState.isGameOver = true;
+                     return newState;
+                 }
+
+                 // Pipe movement & generation
+                 newState.pipeSpawnTimer++;
+                 if (newState.pipeSpawnTimer >= newState.pipeSpawnInterval) {
+                     newState.pipeSpawnTimer = 0;
+                     const topPipeHeight = Math.random() * (canvas.height - newState.pipeGap - 100) + 50; // Min 50px height
+                     newState.pipes.push({
+                         x: canvas.width,
+                         y: 0, // Top pipe y
+                         height: topPipeHeight,
+                         scored: false // Flag to prevent multiple score increments
+                     });
+                     newState.pipes.push({
+                         x: canvas.width,
+                         y: topPipeHeight + newState.pipeGap, // Bottom pipe y
+                         height: canvas.height - (topPipeHeight + newState.pipeGap)
+                     });
+                 }
+
+                 // Move pipes and check collision/score
+                 let pipesToRemove = [];
+                 for (let i = 0; i < newState.pipes.length; i++) {
+                     let p = newState.pipes[i];
+                     p.x -= newState.pipeSpeed;
+
+                     // Collision check
+                     if (
+                         newState.bird.x < p.x + newState.pipeWidth &&
+                         newState.bird.x + newState.bird.width > p.x &&
+                         newState.bird.y < p.y + p.height && // Adjusted for top/bottom pipes implicitly
+                         newState.bird.y + newState.bird.height > p.y
+                         // Note: This collision check works because pipes are added in pairs.
+                         // A more robust check would identify top/bottom pairs explicitly.
+                     ) {
+                         newState.isGameOver = true;
+                         return newState;
+                     }
+
+                      // Check for scoring (bird passed the pipe's starting edge)
+                      // Only score for the top pipe of a pair to avoid double scoring
+                      // This assumes pipes are added top then bottom.
+                      if (i % 2 === 0 && !p.scored && p.x + newState.pipeWidth < newState.bird.x) {
+                          newState.score++;
+                          p.scored = true; // Mark this specific pipe as scored
+                          // Mark the corresponding bottom pipe as scored too
+                           if (newState.pipes[i+1]) newState.pipes[i+1].scored = true;
+                      }
+
+
+                     // Mark pipes for removal
+                     if (p.x + newState.pipeWidth < 0) {
+                         pipesToRemove.push(i);
+                     }
+                 }
+
+                 // Remove off-screen pipes (iterating backwards avoids index issues)
+                 for (let i = pipesToRemove.length - 1; i >= 0; i--) {
+                     newState.pipes.splice(pipesToRemove[i], 1);
+                 }
+
+
+                 return newState;
+             }
+
+             // --- Drawing Function (Impure, uses state) ---
+             function draw(currentState) {
+                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                 // Draw bird
+                 ctx.fillStyle = 'yellow';
+                 ctx.fillRect(currentState.bird.x, currentState.bird.y, currentState.bird.width, currentState.bird.height);
+
+                 // Draw pipes
+                 ctx.fillStyle = 'green';
+                 currentState.pipes.forEach(pipe => {
+                     ctx.fillRect(pipe.x, pipe.y, state.pipeWidth, pipe.height);
+                 });
+
+                 // Draw score
+                 scoreElement.textContent = currentState.score;
+
+                 // Draw Game Over
+                 if (currentState.isGameOver) {
+                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                     ctx.fillRect(0, 0, canvas.width, canvas.height);
+                     ctx.font = '40px sans-serif';
+                     ctx.fillStyle = 'white';
+                     ctx.textAlign = 'center';
+                     ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 20);
+                     ctx.font = '20px sans-serif';
+                     ctx.fillText(`Score: ${currentState.score}`, canvas.width / 2, canvas.height / 2 + 20);
+                      ctx.fillText('Click Restart', canvas.width / 2, canvas.height / 2 + 50);
+                 }
+             }
+
+             // --- Game Loop ---
+             function gameLoop() {
+                state = updateState(state);
+                draw(state);
+
+                if (state.isGameOver) {
+                    state.isRunning = false;
+                    cancelAnimationFrame(state.animationFrameId);
+                    state.animationFrameId = null;
+                    restartBtn.classList.remove('hidden');
+                    startBtn.classList.add('hidden');
+                    updateSessionScores(state.score); // Send score to backend
+                    return; // Stop the loop
+                }
+
+                if (state.isRunning) {
+                    state.animationFrameId = requestAnimationFrame(gameLoop);
+                }
+             }
+
+             // --- Event Listener ---
+              function handleFlap(event) {
+                  // Check if the event is a click or spacebar press
+                  if (event.type === 'click' || (event.type === 'keydown' && event.code === 'Space')) {
+                     if (state.isRunning && !state.isGameOver) { // Only flap if running and not over
+                         state.bird.velocity = state.bird.jump;
+                     }
+                  }
+              }
+
+             // --- Game Controls ---
+             flappyGame = { // Assign to global object
+                start: () => {
+                    if (state.isRunning) return; // Prevent multiple starts
+                    state.isRunning = true;
+                    state.isGameOver = false; // Ensure game isn't over
+                    startBtn.classList.add('hidden');
+                    restartBtn.classList.add('hidden'); // Hide restart until game over
+                    // Reset bird position/velocity slightly if restarting without full reset
+                    state.bird.y = canvas.height / 2;
+                    state.bird.velocity = 0;
+
+                    // Clear previous listeners before adding new ones
+                    canvas.removeEventListener('click', handleFlap);
+                    window.removeEventListener('keydown', handleFlap);
+                    // Add listeners
+                    canvas.addEventListener('click', handleFlap);
+                    window.addEventListener('keydown', handleFlap);
+
+                    if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId); // Clear previous loop if any
+                    state.animationFrameId = requestAnimationFrame(gameLoop);
+                },
+                restart: () => {
+                     // Cancel existing loop if running
+                    if (state.animationFrameId) {
+                        cancelAnimationFrame(state.animationFrameId);
+                        state.animationFrameId = null;
+                    }
+                     // Remove event listeners
+                    canvas.removeEventListener('click', handleFlap);
+                    window.removeEventListener('keydown', handleFlap);
+
+                     // Reset state completely
+                     state = {
+                        bird: { x: 50, y: canvas.height / 2, width: 20, height: 20, velocity: 0, gravity: 0.2, jump: -5 },
+                        pipes: [],
+                        pipeWidth: 50,
+                        pipeGap: 120,
+                        pipeSpeed: 2,
+                        pipeSpawnTimer: 0,
+                        pipeSpawnInterval: 150, // frames
+                        score: 0,
+                        isGameOver: false,
+                        isRunning: false, // Will be set true by start()
+                        animationFrameId: null
+                     };
+                     scoreElement.textContent = '0'; // Reset score display
+                     restartBtn.classList.add('hidden');
+                     startBtn.classList.remove('hidden');
+                     draw(state); // Draw initial state
+                },
+                // Expose state for potential debugging or extension (carefully)
+                 getState: () => JSON.parse(JSON.stringify(state)), // Return a copy
+                 isRunning: () => state.isRunning, // Getter for running status
+                 animationFrameId: state.animationFrameId // Store ID to allow cancellation from outside if needed
+             };
+
+             // Initial draw
+             draw(state);
+        }
+
+
+        // --- Game 2: Numeric Puzzle ---
+
+        function setupPuzzle() {
+            const puzzleArea = document.getElementById('puzzleArea');
+            const movesElement = document.getElementById('puzzleMoves');
+            const timeElement = document.getElementById('puzzleTime');
+            const bestTimeElement = document.getElementById('puzzleBestTime');
+            const highScoreDisplay = document.getElementById('puzzleHighScore');
+            const startBtn = document.getElementById('puzzleStartBtn');
+            const restartBtn = document.getElementById('puzzleRestartBtn');
+
+            const GRID_SIZE = 4;
+            const TILE_SIZE = 80; // Must match CSS
+
+            // Game State
+            let state = {
+                tiles: [], // Array of numbers 1-15 and null for empty
+                emptyTileIndex: -1,
+                moves: 0,
+                startTime: null,
+                timerInterval: null,
+                elapsedTime: 0,
+                isComplete: false,
+                isRunning: false,
+                bestTime: localStorage.getItem('puzzleBestTime') ? parseFloat(localStorage.getItem('puzzleBestTime')) : null // Load best time
+            };
+
+             // Display best time if available
+             if (state.bestTime !== null) {
+                bestTimeElement.textContent = `${state.bestTime.toFixed(1)}s`;
+                highScoreDisplay.style.display = 'block';
+             } else {
+                  highScoreDisplay.style.display = 'none';
+             }
+
+
+             // --- Helper Functions ---
+            function getTileCoords(index) {
+                return { row: Math.floor(index / GRID_SIZE), col: index % GRID_SIZE };
+            }
+
+            function getIndex(row, col) {
+                return row * GRID_SIZE + col;
+            }
+
+            function isSolvable(tiles) {
+                let inversions = 0;
+                const flatTiles = tiles.filter(t => t !== null); // Ignore empty tile for inversions
+
+                for (let i = 0; i < flatTiles.length; i++) {
+                    for (let j = i + 1; j < flatTiles.length; j++) {
+                        if (flatTiles[i] > flatTiles[j]) {
+                            inversions++;
+                        }
+                    }
+                }
+
+                if (GRID_SIZE % 2 === 1) { // Odd grid size
+                    return inversions % 2 === 0;
+                } else { // Even grid size
+                    const emptyRow = getTileCoords(tiles.indexOf(null)).row;
+                    // Count from bottom (0-indexed), so (GRID_SIZE - emptyRow)
+                    if ((GRID_SIZE - emptyRow) % 2 === 0) { // Empty tile on even row from bottom
+                        return inversions % 2 === 1;
+                    } else { // Empty tile on odd row from bottom
+                        return inversions % 2 === 0;
+                    }
+                }
+            }
+
+            function shuffleTiles() {
+                let numbers = Array.from({ length: GRID_SIZE * GRID_SIZE - 1 }, (_, i) => i + 1);
+                numbers.push(null); // Add empty tile marker
+
+                do {
+                    // Fisher-Yates Shuffle
+                    for (let i = numbers.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+                    }
+                } while (!isSolvable(numbers)); // Ensure the shuffled puzzle is solvable
+
+                state.tiles = numbers;
+                state.emptyTileIndex = state.tiles.indexOf(null);
+            }
+
+            function checkWinCondition() {
+                 if (state.emptyTileIndex !== GRID_SIZE * GRID_SIZE - 1) return false; // Empty must be last
+                for (let i = 0; i < GRID_SIZE * GRID_SIZE - 1; i++) {
+                    if (state.tiles[i] !== i + 1) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+             // --- Monadic-like State Update: Tile Move ---
+             // Takes state and tileIndexToMove, returns new state or original if invalid move
+             function attemptMove(currentState, tileIndexToMove) {
+                 if (!currentState.isRunning || currentState.isComplete || tileIndexToMove === currentState.emptyTileIndex) {
+                     return currentState; // No change if game not running, complete, or clicking empty
+                 }
+
+                 const tileCoords = getTileCoords(tileIndexToMove);
+                 const emptyCoords = getTileCoords(currentState.emptyTileIndex);
+
+                 // Check adjacency (Manhattan distance === 1)
+                 const dx = Math.abs(tileCoords.col - emptyCoords.col);
+                 const dy = Math.abs(tileCoords.row - emptyCoords.row);
+
+                 if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+                      // Valid move
+                      let newState = JSON.parse(JSON.stringify(currentState)); // Deep copy state
+                      newState.tiles = [...currentState.tiles]; // Shallow copy array is enough here
+
+                      // Swap tile and empty space
+                      [newState.tiles[tileIndexToMove], newState.tiles[newState.emptyTileIndex]] =
+                          [newState.tiles[newState.emptyTileIndex], newState.tiles[tileIndexToMove]];
+
+                      newState.emptyTileIndex = tileIndexToMove; // Update empty index
+                      newState.moves++;
+
+                      // Check for win after move
+                      newState.isComplete = checkWinCondition();
+                      if (newState.isComplete) {
+                          newState.isRunning = false; // Stop timer etc.
+                          clearInterval(newState.timerInterval);
+                          newState.timerInterval = null;
+                      }
+
+                      return newState;
+                 }
+
+                 return currentState; // Invalid move, return original state
+             }
+
+
+            // --- Drawing/DOM Update Function ---
+            function renderBoard() {
+                puzzleArea.innerHTML = ''; // Clear previous tiles
+
+                state.tiles.forEach((tileValue, index) => {
+                    const tile = document.createElement('div');
+                    tile.classList.add('puzzle-tile');
+                    const { row, col } = getTileCoords(index);
+                    tile.style.transform = `translate(${col * TILE_SIZE}px, ${row * TILE_SIZE}px)`; // Position using transform
+
+                    if (tileValue === null) {
+                        tile.classList.add('empty-tile');
+                        tile.textContent = '';
+                    } else {
+                        tile.textContent = tileValue;
+                        tile.onclick = () => handleTileClick(index); // Add click listener
+                    }
+                    puzzleArea.appendChild(tile);
+                });
+
+                // Update stats
+                movesElement.textContent = state.moves;
+                 timeElement.textContent = state.elapsedTime.toFixed(1);
+
+                 // Handle game completion display
+                if (state.isComplete) {
+                    timeElement.style.fontWeight = 'bold';
+                    timeElement.style.color = 'green';
+                    restartBtn.classList.remove('hidden');
+                     startBtn.classList.add('hidden');
+
+                     // Check and update best time
+                     if (state.bestTime === null || state.elapsedTime < state.bestTime) {
+                          state.bestTime = state.elapsedTime;
+                          localStorage.setItem('puzzleBestTime', state.bestTime.toString()); // Save best time
+                          bestTimeElement.textContent = `${state.bestTime.toFixed(1)}s`;
+                           highScoreDisplay.style.display = 'block';
+                           highScoreDisplay.style.color = 'blue'; // Indicate new best
+                     }
+                     updateSessionScoresPuzzle(state.elapsedTime); // Send score (time) to backend
+
+                } else {
+                     timeElement.style.fontWeight = 'normal';
+                     timeElement.style.color = 'black';
+                     highScoreDisplay.style.color = 'black'; // Reset best time color
+                }
+            }
+
+             // --- Timer Update ---
+             function updateTimer() {
+                 if (state.isRunning && state.startTime) {
+                      const now = Date.now();
+                      state.elapsedTime = (now - state.startTime) / 1000;
+                      timeElement.textContent = state.elapsedTime.toFixed(1);
+                 }
+             }
+
+            // --- Event Handler ---
+            function handleTileClick(index) {
+                const newState = attemptMove(state, index);
+                if (newState !== state) { // Check if state actually changed
+                    state = newState; // Update the main state object
+                    renderBoard(); // Re-render the board with the new state
+                }
+            }
+
+            // --- Game Controls ---
+             puzzleGame = { // Assign to global object
+                start: () => {
+                    if (state.isRunning) return;
+                    state.isRunning = true;
+                    state.isComplete = false;
+                    state.startTime = Date.now();
+                    state.elapsedTime = 0; // Reset timer display visually
+                    timeElement.textContent = '0.0';
+                    highScoreDisplay.style.color = 'black'; // Reset best time color
+
+                    startBtn.classList.add('hidden');
+                    restartBtn.classList.add('hidden'); // Hide restart until finished
+
+                    if (state.timerInterval) clearInterval(state.timerInterval); // Clear existing timer
+                    state.timerInterval = setInterval(updateTimer, 100); // Update time every 100ms
+
+                    renderBoard(); // Render the shuffled board
+                },
+                restart: () => {
+                     if (state.timerInterval) {
+                         clearInterval(state.timerInterval);
+                         state.timerInterval = null;
+                     }
+                     state = {
+                         ...state, // Keep bestTime
+                         tiles: [],
+                         emptyTileIndex: -1,
+                         moves: 0,
+                         startTime: null,
+                         timerInterval: null,
+                         elapsedTime: 0,
+                         isComplete: false,
+                         isRunning: false // Set to false, start will set true
+                         // bestTime is preserved
+                     };
+                     shuffleTiles(); // Re-shuffle
+                     movesElement.textContent = '0';
+                     timeElement.textContent = '0.0';
+                     restartBtn.classList.add('hidden');
+                     startBtn.classList.remove('hidden');
+                     renderBoard(); // Render the new initial board
+                },
+                 isRunning: () => state.isRunning,
+                 timerInterval: state.timerInterval // Store ID for potential external clearing
+             };
+
+            // Initial setup
+            shuffleTiles();
+            renderBoard(); // Render initial (shuffled but not started) board
+        }
+
+
+        // --- Game 3: Dino Runner ---
+
+        function setupDinoRunner() {
+            const canvas = document.getElementById('dinoCanvas');
+            const ctx = canvas.getContext('2d');
+             const gameArea = document.getElementById('dinoRunnerArea');
+            canvas.width = gameArea.clientWidth;
+            canvas.height = gameArea.clientHeight;
+
+            const scoreElement = document.getElementById('dinoScore');
+            const startBtn = document.getElementById('dinoStartBtn');
+            const restartBtn = document.getElementById('dinoRestartBtn');
+
+             // Game State
+             let state = {
+                 dino: { x: 50, y: canvas.height - 30, width: 20, height: 30, velocityY: 0, gravity: 0.4, jumpPower: -8, isJumping: false, groundY: canvas.height - 30 },
+                 obstacles: [],
+                 obstacleWidth: 20,
+                 obstacleMinHeight: 20,
+                 obstacleMaxHeight: 40,
+                 obstacleSpeed: 3,
+                 obstacleSpawnTimer: 0,
+                 obstacleSpawnIntervalMin: 80, // Min frames between spawns
+                 obstacleSpawnIntervalMax: 150, // Max frames between spawns
+                 nextSpawnInterval: 100, // Initial/current interval
+                 score: 0,
+                 isGameOver: false,
+                 isRunning: false,
+                 animationFrameId: null,
+                 gameSpeedMultiplier: 1.0 // Increases over time
+             };
+
+             // --- State Update Function ---
+             function updateDinoState(currentState) {
+                 if (!currentState.isRunning || currentState.isGameOver) return currentState;
+
+                 let newState = JSON.parse(JSON.stringify(currentState)); // Deep copy
+
+                 // Dino physics (Jump & Gravity)
+                 if (newState.dino.isJumping) {
+                      newState.dino.velocityY += newState.dino.gravity;
+                      newState.dino.y += newState.dino.velocityY;
+
+                      // Check if landed
+                      if (newState.dino.y >= newState.dino.groundY) {
+                          newState.dino.y = newState.dino.groundY;
+                          newState.dino.velocityY = 0;
+                          newState.dino.isJumping = false;
+                      }
+                 }
+
+                 // Increase game speed slightly over time
+                 newState.gameSpeedMultiplier += 0.0001;
+                 const currentSpeed = newState.obstacleSpeed * newState.gameSpeedMultiplier;
+
+
+                  // Obstacle management
+                 newState.obstacleSpawnTimer++;
+                 if (newState.obstacleSpawnTimer >= newState.nextSpawnInterval) {
+                     newState.obstacleSpawnTimer = 0;
+                     // Randomize next spawn time
+                     newState.nextSpawnInterval = Math.floor(Math.random() * (newState.obstacleSpawnIntervalMax - newState.obstacleSpawnIntervalMin + 1)) + newState.obstacleSpawnIntervalMin;
+
+                     // Randomize height
+                      const obsHeight = Math.floor(Math.random() * (newState.obstacleMaxHeight - newState.obstacleMinHeight + 1)) + newState.obstacleMinHeight;
+                     newState.obstacles.push({
+                         x: canvas.width,
+                         y: canvas.height - obsHeight, // Position on the ground
+                         width: newState.obstacleWidth,
+                         height: obsHeight
+                     });
+                 }
+
+                 // Move obstacles & check collision
+                 let obstaclesToRemove = [];
+                 for (let i = 0; i < newState.obstacles.length; i++) {
+                      let obs = newState.obstacles[i];
+                      obs.x -= currentSpeed; // Use current speed
+
+                      // Simple AABB Collision Check
+                      if (
+                          newState.dino.x < obs.x + obs.width &&
+                          newState.dino.x + newState.dino.width > obs.x &&
+                          newState.dino.y < obs.y + obs.height &&
+                          newState.dino.y + newState.dino.height > obs.y
+                      ) {
+                          newState.isGameOver = true;
+                          return newState; // Game over, return immediately
+                      }
+
+                      // Mark for removal if off-screen
+                      if (obs.x + obs.width < 0) {
+                          obstaclesToRemove.push(i);
+                          newState.score++; // Increment score when obstacle is passed
+                      }
+                 }
+
+                 // Remove passed obstacles
+                  for (let i = obstaclesToRemove.length - 1; i >= 0; i--) {
+                     newState.obstacles.splice(obstaclesToRemove[i], 1);
+                 }
+
+                 return newState;
+             }
+
+             // --- Drawing Function ---
+             function drawDinoGame(currentState) {
+                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                 // Draw Dino (simple rectangle)
+                 ctx.fillStyle = 'grey';
+                 ctx.fillRect(currentState.dino.x, currentState.dino.y, currentState.dino.width, currentState.dino.height);
+
+                 // Draw Obstacles
+                 ctx.fillStyle = 'red';
+                 currentState.obstacles.forEach(obs => {
+                     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                 });
+
+                 // Draw Score
+                 scoreElement.textContent = currentState.score;
+
+                  // Draw Game Over
+                 if (currentState.isGameOver) {
+                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                     ctx.fillRect(0, 0, canvas.width, canvas.height);
+                     ctx.font = '40px sans-serif';
+                     ctx.fillStyle = 'white';
+                     ctx.textAlign = 'center';
+                     ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 20);
+                     ctx.font = '20px sans-serif';
+                     ctx.fillText(`Score: ${currentState.score}`, canvas.width / 2, canvas.height / 2 + 20);
+                     ctx.fillText('Click Restart', canvas.width / 2, canvas.height / 2 + 50);
+                 }
+             }
+
+             // --- Game Loop ---
+             function dinoGameLoop() {
+                 state = updateDinoState(state);
+                 drawDinoGame(state);
+
+                 if (state.isGameOver) {
+                    state.isRunning = false;
+                    cancelAnimationFrame(state.animationFrameId);
+                    state.animationFrameId = null;
+                    restartBtn.classList.remove('hidden');
+                    startBtn.classList.add('hidden');
+                    updateSessionScores(state.score); // Send score to backend
+                    return; // Stop loop
+                 }
+
+                 if (state.isRunning) {
+                    state.animationFrameId = requestAnimationFrame(dinoGameLoop);
+                 }
+             }
+
+             // --- Event Listener (Jump) ---
+             function handleJump(event) {
+                 // Allow jump with Space or Click/Tap
+                 if (event.type === 'click' || (event.type === 'keydown' && event.code === 'Space')) {
+                     if (state.isRunning && !state.isGameOver && !state.dino.isJumping) {
+                         state.dino.isJumping = true;
+                         state.dino.velocityY = state.dino.jumpPower;
+                         event.preventDefault(); // Prevent space bar from scrolling page
+                     }
+                 }
+             }
+
+              // --- Game Controls ---
+             dinoGame = { // Assign to global object
+                 start: () => {
+                    if (state.isRunning) return;
+                    state.isRunning = true;
+                    state.isGameOver = false;
+                    startBtn.classList.add('hidden');
+                    restartBtn.classList.add('hidden'); // Hide restart initially
+
+                    // Clear previous listeners before adding new ones
+                    canvas.removeEventListener('click', handleJump);
+                    window.removeEventListener('keydown', handleJump);
+                    // Add listeners
+                    canvas.addEventListener('click', handleJump); // Use canvas for click
+                    window.addEventListener('keydown', handleJump); // Use window for keydown
+
+                    if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
+                    state.animationFrameId = requestAnimationFrame(dinoGameLoop);
+                 },
+                 restart: () => {
+                    if (state.animationFrameId) {
+                        cancelAnimationFrame(state.animationFrameId);
+                        state.animationFrameId = null;
+                    }
+                     // Remove event listeners
+                    canvas.removeEventListener('click', handleJump);
+                    window.removeEventListener('keydown', handleJump);
+
+                    // Reset state
+                     state = {
+                          dino: { x: 50, y: canvas.height - 30, width: 20, height: 30, velocityY: 0, gravity: 0.4, jumpPower: -8, isJumping: false, groundY: canvas.height - 30 },
+                          obstacles: [],
+                          obstacleWidth: 20,
+                          obstacleMinHeight: 20,
+                          obstacleMaxHeight: 40,
+                          obstacleSpeed: 3,
+                          obstacleSpawnTimer: 0,
+                          obstacleSpawnIntervalMin: 80,
+                          obstacleSpawnIntervalMax: 150,
+                          nextSpawnInterval: 100,
+                          score: 0,
+                          isGameOver: false,
+                          isRunning: false, // Start will set true
+                          animationFrameId: null,
+                          gameSpeedMultiplier: 1.0
+                     };
+                     scoreElement.textContent = '0'; // Reset display
+                     restartBtn.classList.add('hidden');
+                     startBtn.classList.remove('hidden');
+                     drawDinoGame(state); // Draw initial state
+                 },
+                 isRunning: () => state.isRunning,
+                 animationFrameId: state.animationFrameId // Store ID for external cancellation
+             };
+
+             // Initial Draw
+             drawDinoGame(state);
+        }
+
+        // --- Initial Setup ---
+        // No game selected initially, show menu
+        showMenu();
+
+    </script>
+
+</body>
+</html>
