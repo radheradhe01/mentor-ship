@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+bcrypt # Add bcrypt explicitly
+python-jose[cryptography]
+python-multipart # For form data (OAuth2PasswordRequestForm)
+httpx # For making requests to AI service

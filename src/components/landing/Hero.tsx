@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +15,7 @@ export function Hero() {
             </h1>
             
             <p className="text-xl text-muted-foreground animate-fade-in" style={{ animationDelay: "0.1s" }}>
-              MentorSpark connects mentors and mentees for meaningful growth.
+              Emiwex connects mentors and mentees for meaningful growth.
               Learn from industry experts through personalized guidance and live sessions.
             </p>
             

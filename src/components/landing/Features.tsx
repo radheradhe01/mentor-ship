@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Users, Video, MessageSquare, Search, Award } from "lucide-react";
 
@@ -40,7 +39,7 @@ export function Features() {
     <section className="py-20 bg-muted/30">
       <div className="container">
         <div className="text-center mb-16 max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold mb-4">How MentorSpark Works</h2>
+          <h2 className="text-3xl font-bold mb-4">How Emiwex Works</h2>
           <p className="text-muted-foreground text-lg">
             Our platform makes it easy to connect with the right mentor and build meaningful relationships that accelerate your growth.
           </p>

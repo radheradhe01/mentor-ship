@@ -34,7 +34,7 @@ export function Navbar() {
         <div className="flex items-center gap-6 md:gap-10">
           <Link to="/" className="flex items-center space-x-2">
             <span className="hidden font-bold text-xl sm:inline-block">
-              MentorSpark
+              Emiwex
             </span>
           </Link>
           {user?.isOnboarded && (

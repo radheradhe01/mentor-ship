@@ -233,53 +233,46 @@
         let sessionTotalScore = 0;
         let sessionHighestScore = 0;
 
-        // Placeholder backend function
-        // In a real application, this would use 'fetch' or similar
-        // to send data to a server running the actual backend logic.
-        function bhavesh_backend(totalPoints, highestPoints) {
-            console.log(`--- Sending data to bhavesh_backend ---`);
-            console.log(`Session Total Points: ${totalPoints}`);
-            console.log(`Session Highest Points: ${highestPoints}`);
-            console.log(`--------------------------------------`);
-            // Simulate an asynchronous operation with a Promise
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    console.log("Backend simulation complete.");
-                    resolve({ status: 'success', message: 'Data received (simulated)' });
-                }, 50); // Simulate network delay
-            });
+        // Send scores to backend with JWT authentication if available
+        async function sendScoreToBackend(totalPoints, highestPoints) {
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch('/games/score', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({ total_score: totalPoints, highest_score: highestPoints })
+                });
+                const data = await res.json();
+                console.log('Backend response:', data);
+            } catch (err) {
+                console.error('Backend error:', err);
+            }
         }
 
+        // Update session scores and send to backend
         function updateSessionScores(gameScore) {
             sessionTotalScore += gameScore;
             if (gameScore > sessionHighestScore) {
                 sessionHighestScore = gameScore;
             }
-            // Update display
             document.getElementById('sessionTotalScore').textContent = sessionTotalScore;
             document.getElementById('sessionHighestScore').textContent = sessionHighestScore;
-
-            // Call the backend function (async)
-             bhavesh_backend(sessionTotalScore, sessionHighestScore)
-                .then(response => console.log("Backend response:", response))
-                .catch(error => console.error("Backend error (simulated):", error));
+            sendScoreToBackend(sessionTotalScore, sessionHighestScore);
         }
 
-         function updateSessionScoresPuzzle(timeScore) {
-             const points = Math.max(100, 10000 - Math.floor(timeScore * 10));
-
-             sessionTotalScore += points;
-             if (points > sessionHighestScore) {
-                 sessionHighestScore = points;
-             }
-             document.getElementById('sessionTotalScore').textContent = sessionTotalScore;
-             document.getElementById('sessionHighestScore').textContent = sessionHighestScore;
-
-             bhavesh_backend(sessionTotalScore, sessionHighestScore)
-                 .then(response => console.log("Backend response:", response))
-                 .catch(error => console.error("Backend error (simulated):", error));
-         }
-
+        function updateSessionScoresPuzzle(timeScore) {
+            const points = Math.max(100, 10000 - Math.floor(timeScore * 10));
+            sessionTotalScore += points;
+            if (points > sessionHighestScore) {
+                sessionHighestScore = points;
+            }
+            document.getElementById('sessionTotalScore').textContent = sessionTotalScore;
+            document.getElementById('sessionHighestScore').textContent = sessionHighestScore;
+            sendScoreToBackend(sessionTotalScore, sessionHighestScore);
+        }
 
         // --- Menu Nav ---
 
@@ -1052,3 +1045,4 @@
 
 </body>
 </html>
+``` 

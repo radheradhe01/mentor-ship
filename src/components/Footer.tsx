@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 
 export function Footer() {
@@ -7,7 +6,7 @@ export function Footer() {
       <div className="container py-8 md:py-12">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="flex flex-col gap-2">
-            <h3 className="text-lg font-medium">MentorSpark</h3>
+            <h3 className="text-lg font-medium">Emiwex</h3>
             <p className="text-sm text-muted-foreground">
               Connecting mentors and mentees for meaningful growth.
             </p>
@@ -48,7 +47,7 @@ export function Footer() {
         </div>
         <div className="mt-8 border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2025 MentorSpark. All rights reserved.
+            © 2025 Emiwex. All rights reserved.
           </p>
           <div className="flex gap-4">
             <a href="#" className="text-muted-foreground hover:text-primary">

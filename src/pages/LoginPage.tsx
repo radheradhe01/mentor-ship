@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
@@ -12,14 +11,14 @@ import { useToast } from "@/components/ui/use-toast";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [userType, setUserType] = useState<'mentor' | 'mentee'>('mentee');
   const { login } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email.trim()) {
       toast({
         title: "Error",
@@ -28,17 +27,22 @@ const LoginPage = () => {
       });
       return;
     }
-    
-    login(email, userType);
-    
-    toast({
-      title: "Logged in successfully!",
-      description: `Welcome back to MentorSpark as a ${userType}.`,
-    });
-    
-    setTimeout(() => {
-      navigate(userType === 'mentor' ? "/mentor/dashboard" : "/mentee/dashboard");
-    }, 1000);
+    try {
+      await login(email, password);
+      toast({
+        title: `Logged in as ${userType}`,
+        description: `Welcome back to Emiwex as a ${userType}.`,
+      });
+      setTimeout(() => {
+        navigate(userType === 'mentor' ? "/mentor/dashboard" : "/mentee/dashboard");
+      }, 1000);
+    } catch (err) {
+      toast({
+        title: "Login failed",
+        description: "Invalid credentials.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -47,7 +51,7 @@ const LoginPage = () => {
       <main className="flex-1 flex items-center justify-center py-10">
         <Card className="w-full max-w-md mx-4 animate-fade-in">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Login to MentorSpark</CardTitle>
+            <CardTitle className="text-2xl font-bold">Login to Emiwex</CardTitle>
             <CardDescription>Enter your email to sign in to your account</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -63,6 +67,17 @@ const LoginPage = () => {
                 />
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input 
+                  id="password" 
+                  type="password" 
+                  placeholder="Enter your password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label>User Type</Label>
                 <div className="flex gap-4">

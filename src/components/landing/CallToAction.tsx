@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -12,7 +11,7 @@ export function CallToAction() {
             Ready to find your perfect mentor match?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join MentorSpark today and take the first step toward achieving your goals with personalized guidance from experts in your field.
+            Join Emiwex today and take the first step toward achieving your goals with personalized guidance from experts in your field.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link to="/signup">

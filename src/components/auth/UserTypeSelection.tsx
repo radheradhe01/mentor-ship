@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ArrowRight, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,9 @@ export function UserTypeSelection({ onSelect }: UserTypeSelectionProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 py-10 animate-fade-in">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">Join MentorSpark</h1>
-        <p className="text-muted-foreground">Select your role to get started</p>
+      <div className="text-center">
+        <h1 className="text-3xl font-bold">Join Emiwex</h1> {/* Changed from MentorSpark */}
+        <p className="text-muted-foreground mt-2 mb-6">Are you looking for a mentor or willing to mentor others?</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">

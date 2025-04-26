@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 export function Testimonials() {
@@ -11,7 +10,7 @@ export function Testimonials() {
       background: "bg-mentee-soft"
     },
     {
-      quote: "As a mentor, I've found tremendous fulfillment in guiding junior developers. MentorSpark has connected me with passionate mentees who are eager to learn.",
+      quote: "As a mentor, I've found tremendous fulfillment in guiding junior developers. Emiwex has connected me with passionate mentees who are eager to learn.",
       author: "Michael Chen",
       role: "Senior Software Engineer",
       avatar: "https://randomuser.me/api/portraits/men/22.jpg",
@@ -32,7 +31,7 @@ export function Testimonials() {
         <div className="text-center mb-16 max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold mb-4">What Our Community Says</h2>
           <p className="text-muted-foreground text-lg">
-            Join thousands of mentors and mentees who are building meaningful connections on MentorSpark.
+            Join thousands of mentors and mentees who are building meaningful connections on Emiwex.
           </p>
         </div>
         
