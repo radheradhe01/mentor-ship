@@ -1,167 +1,139 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { interests, categorizedInterests, Interest } from "@/data/interests";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Check, Search } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
-interface MenteeInterestsFormProps {
-  onSubmit: (data: { name: string, interests: string[] }) => void;
+interface Interest {
+  id: number;
+  name: string;
+  icon: string | null;
+  category: 'technology' | 'business' | 'creative' | 'academic' | 'personal';
 }
 
-export function MenteeInterestsForm({ onSubmit }: MenteeInterestsFormProps) {
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>("technology");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [name, setName] = useState("");
-  
-  const categories = Object.keys(categorizedInterests);
-  
-  const toggleInterest = (interestId: string) => {
-    if (selectedInterests.includes(interestId)) {
-      setSelectedInterests(selectedInterests.filter(id => id !== interestId));
-    } else {
-      setSelectedInterests([...selectedInterests, interestId]);
-    }
-  };
-  
-  const filteredInterests = searchTerm.trim() === "" 
-    ? categorizedInterests[activeCategory] 
-    : interests.filter(interest => 
-        interest.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({ name, interests: selectedInterests });
+type CategorizedInterests = Record<string, Interest[]>;
+
+interface MenteeInterestsFormProps {
+  onSubmit: (selectedInterests: number[]) => void;
+  isLoading: boolean;
+}
+
+export function MenteeInterestsForm({ onSubmit, isLoading }: MenteeInterestsFormProps) {
+  const [selectedInterests, setSelectedInterests] = useState<Set<number>>(new Set());
+  const [interestsData, setInterestsData] = useState<CategorizedInterests>({});
+  const [loadingInterests, setLoadingInterests] = useState(true);
+  const [errorInterests, setErrorInterests] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchInterests = async () => {
+      setLoadingInterests(true);
+      setErrorInterests(null);
+      try {
+        const response = await fetch("/interests/");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data: Interest[] = await response.json();
+
+        const categorized = data.reduce((acc, interest) => {
+          const categoryKey = interest.category || 'other';
+          if (!acc[categoryKey]) {
+            acc[categoryKey] = [];
+          }
+          acc[categoryKey].push(interest);
+          return acc;
+        }, {} as CategorizedInterests);
+
+        setInterestsData(categorized);
+      } catch (error: any) {
+        console.error("Failed to fetch interests:", error);
+        setErrorInterests("Failed to load interests. Please try again later.");
+        toast({
+          title: "Error",
+          description: "Could not load interests.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingInterests(false);
+      }
+    };
+
+    fetchInterests();
+  }, [toast]);
+
+  const handleCheckboxChange = (interestId: number) => {
+    setSelectedInterests(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(interestId)) {
+        newSet.delete(interestId);
+      } else {
+        newSet.add(interestId);
+      }
+      return newSet;
+    });
   };
 
-  const capitalizeFirstLetter = (string: string) => {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedInterests.size < 3) {
+      toast({
+        title: "Select Interests",
+        description: "Please select at least 3 interests.",
+        variant: "destructive",
+      });
+      return;
+    }
+    onSubmit(Array.from(selectedInterests));
   };
-  
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6 py-10 animate-fade-in">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">What are you interested in?</h1>
-        <p className="text-muted-foreground">Select your interests to help us match you with the right mentors</p>
-      </div>
-      
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Your Name</Label>
-          <Input 
-            id="name" 
-            value={name} 
-            onChange={(e) => setName(e.target.value)} 
-            placeholder="Enter your name"
-            className="max-w-md"
-          />
-        </div>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className="w-4 h-4 text-muted-foreground" />
+    <Card className="w-full max-w-2xl mx-auto animate-fade-in">
+      <CardHeader>
+        <CardTitle>Select Your Interests</CardTitle>
+        <CardDescription>Choose at least 3 areas you're interested in learning about.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loadingInterests ? (
+          <div className="flex justify-center items-center h-40">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2">Loading Interests...</span>
+          </div>
+        ) : errorInterests ? (
+          <div className="text-center text-red-500">{errorInterests}</div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {Object.entries(interestsData).map(([category, items]) => (
+              <div key={category}>
+                <h3 className="text-lg font-medium capitalize mb-3 border-b pb-1">{category}</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {items.map((interest) => (
+                    <div key={interest.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`interest-${interest.id}`}
+                        checked={selectedInterests.has(interest.id)}
+                        onCheckedChange={() => handleCheckboxChange(interest.id)}
+                      />
+                      <Label htmlFor={`interest-${interest.id}`} className="flex items-center gap-2 cursor-pointer">
+                        {interest.icon && <span className="text-xl">{interest.icon}</span>}
+                        {interest.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-end pt-4">
+              <Button type="submit" disabled={isLoading || selectedInterests.size < 3}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isLoading ? "Saving..." : "Save Interests"}
+              </Button>
             </div>
-            <Input
-              type="search"
-              placeholder="Search interests..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        
-        <div className="px-6 pb-2 border-b overflow-x-auto">
-          <div className="flex space-x-2 pb-3">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => {
-                  setActiveCategory(category);
-                  setSearchTerm("");
-                }}
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
-                  activeCategory === category && searchTerm === ""
-                    ? "bg-mentee-primary text-white"
-                    : "bg-muted hover:bg-mentee-light/50"
-                }`}
-              >
-                {capitalizeFirstLetter(category)}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        <CardContent className="pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredInterests.map((interest: Interest) => (
-              <button
-                key={interest.id}
-                onClick={() => toggleInterest(interest.id)}
-                className={`group flex items-center p-3 rounded-lg border transition-all ${
-                  selectedInterests.includes(interest.id)
-                    ? "border-mentee-primary bg-mentee-soft"
-                    : "border-border hover:border-mentee-primary/50 hover:bg-mentee-soft/30"
-                }`}
-              >
-                <div className="flex items-center flex-1">
-                  <span className="text-2xl mr-3">{interest.icon}</span>
-                  <span className="text-sm font-medium">{interest.name}</span>
-                </div>
-                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  selectedInterests.includes(interest.id)
-                    ? "bg-mentee-primary border-mentee-primary text-white"
-                    : "border-muted-foreground"
-                }`}>
-                  {selectedInterests.includes(interest.id) && (
-                    <Check className="w-3 h-3" />
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-        
-        <div className="px-6 py-3 border-t">
-          <div className="flex flex-wrap gap-2">
-            {selectedInterests.length > 0 ? (
-              interests
-                .filter(i => selectedInterests.includes(i.id))
-                .map(interest => (
-                  <Badge key={interest.id} variant="secondary" className="py-1">
-                    {interest.name}
-                    <button 
-                      className="ml-1 text-muted-foreground hover:text-foreground" 
-                      onClick={() => toggleInterest(interest.id)}
-                    >
-                      ×
-                    </button>
-                  </Badge>
-                ))
-            ) : (
-              <p className="text-sm text-muted-foreground">No interests selected yet</p>
-            )}
-          </div>
-        </div>
-        
-        <CardFooter className="flex justify-end border-t pt-4">
-          <Button 
-            onClick={handleSubmit} 
-            disabled={selectedInterests.length === 0 || !name.trim()}
-            className="bg-mentee-primary hover:bg-mentee-secondary"
-          >
-            Continue
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,229 +1,214 @@
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { interests, categorizedInterests } from "@/data/interests";
 import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
-import { Check, ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Loader2 } from "lucide-react";
+
+interface Interest {
+  id: number;
+  name: string;
+  icon: string | null;
+  category: string;
+}
+
+type CategorizedInterests = Record<string, Interest[]>;
 
 interface MentorFiltersProps {
-  onFilterChange: (filters: {
-    search: string;
-    interests: string[];
-    priceRange: [number, number];
-    rating: number;
-  }) => void;
+  onFilterChange: (filters: any) => void;
 }
 
 export function MentorFilters({ onFilterChange }: MentorFiltersProps) {
-  const [filters, setFilters] = useState({
-    search: "",
-    interests: [] as string[],
-    priceRange: [0, 200] as [number, number],
-    rating: 0,
-  });
-  
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, search: e.target.value });
-    onFilterChange({ ...filters, search: e.target.value });
-  };
-  
-  const toggleInterest = (interestId: string) => {
-    const newInterests = filters.interests.includes(interestId)
-      ? filters.interests.filter(id => id !== interestId)
-      : [...filters.interests, interestId];
-    
-    setFilters({ ...filters, interests: newInterests });
-    onFilterChange({ ...filters, interests: newInterests });
-  };
-  
-  const handlePriceChange = (value: number[]) => {
-    const priceRange = [value[0], value[1]] as [number, number];
-    setFilters({ ...filters, priceRange });
-    onFilterChange({ ...filters, priceRange });
-  };
-  
-  const handleRatingChange = (value: number[]) => {
-    setFilters({ ...filters, rating: value[0] });
-    onFilterChange({ ...filters, rating: value[0] });
-  };
-  
-  const toggleCategory = (category: string) => {
-    setExpandedCategories(
-      expandedCategories.includes(category)
-        ? expandedCategories.filter(c => c !== category)
-        : [...expandedCategories, category]
-    );
-  };
-  
-  const clearFilters = () => {
-    setFilters({
-      search: "",
-      interests: [],
-      priceRange: [0, 200],
-      rating: 0,
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedInterests, setSelectedInterests] = useState<Set<number>>(new Set());
+  const [hourlyRateRange, setHourlyRateRange] = useState<[number, number]>([0, 200]);
+  const [availability, setAvailability] = useState<Set<string>>(new Set());
+
+  const [interestsData, setInterestsData] = useState<CategorizedInterests>({});
+  const [loadingInterests, setLoadingInterests] = useState(true);
+  const [errorInterests, setErrorInterests] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchInterests = async () => {
+      setLoadingInterests(true);
+      setErrorInterests(null);
+      try {
+        const response = await fetch("/interests/");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data: Interest[] = await response.json();
+
+        const categorized = data.reduce((acc, interest) => {
+          const categoryKey = interest.category || 'other';
+          if (!acc[categoryKey]) {
+            acc[categoryKey] = [];
+          }
+          acc[categoryKey].push(interest);
+          return acc;
+        }, {} as CategorizedInterests);
+
+        setInterestsData(categorized);
+      } catch (error: any) {
+        console.error("Failed to fetch interests for filters:", error);
+        setErrorInterests("Failed to load filter options.");
+      } finally {
+        setLoadingInterests(false);
+      }
+    };
+
+    fetchInterests();
+  }, []);
+
+  const handleInterestChange = (interestId: number) => {
+    setSelectedInterests(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(interestId)) {
+        newSet.delete(interestId);
+      } else {
+        newSet.add(interestId);
+      }
+      applyFilters(searchTerm, newSet, hourlyRateRange, availability);
+      return newSet;
     });
+  };
+
+  const handleAvailabilityChange = (day: string) => {
+    setAvailability(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(day)) {
+        newSet.delete(day);
+      } else {
+        newSet.add(day);
+      }
+      applyFilters(searchTerm, selectedInterests, hourlyRateRange, newSet);
+      return newSet;
+    });
+  };
+
+  const handleRateChange = (value: [number, number]) => {
+    setHourlyRateRange(value);
+    applyFilters(searchTerm, selectedInterests, value, availability);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchTerm = event.target.value;
+    setSearchTerm(newSearchTerm);
+    applyFilters(newSearchTerm, selectedInterests, hourlyRateRange, availability);
+  };
+
+  const applyFilters = (
+    currentSearchTerm: string,
+    currentInterests: Set<number>,
+    currentRateRange: [number, number],
+    currentAvailability: Set<string>
+  ) => {
     onFilterChange({
-      search: "",
-      interests: [],
-      priceRange: [0, 200],
-      rating: 0,
+      searchTerm: currentSearchTerm,
+      interests: Array.from(currentInterests),
+      minRate: currentRateRange[0],
+      maxRate: currentRateRange[1],
+      availability: Array.from(currentAvailability),
     });
   };
-  
+
+  const availabilityOptions = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
   return (
-    <div className="w-full">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search mentors..."
-            className="pl-10"
-            value={filters.search}
-            onChange={handleSearchChange}
-          />
-        </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setShowMobileFilters(!showMobileFilters)}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-        </Button>
+    <div className="w-full md:w-72 lg:w-80 space-y-6 sticky top-20 self-start">
+      <h2 className="text-xl font-semibold">Filters</h2>
+
+      <div>
+        <Label htmlFor="search-mentor">Search by name or title</Label>
+        <Input
+          id="search-mentor"
+          placeholder="e.g., 'Software Engineer'"
+          value={searchTerm}
+          onChange={handleSearchChange}
+          className="mt-1"
+        />
       </div>
-      
-      {filters.interests.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {filters.interests.map(interestId => {
-            const interest = interests.find(i => i.id === interestId);
-            if (!interest) return null;
-            return (
-              <Badge key={interestId} variant="secondary" className="py-1">
-                {interest.name}
-                <button 
-                  className="ml-1 text-muted-foreground hover:text-foreground" 
-                  onClick={() => toggleInterest(interestId)}
-                >
-                  ×
-                </button>
-              </Badge>
-            );
-          })}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={clearFilters}
-            className="h-6 text-xs"
-          >
-            Clear all
-          </Button>
-        </div>
-      )}
-      
-      <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block`}>
-        <div className="space-y-6">
-          <div>
-            <h3 className="font-medium mb-2">Hourly Rate</h3>
-            <div className="space-y-4">
-              <Slider
-                defaultValue={[filters.priceRange[0], filters.priceRange[1]]}
-                max={200}
-                step={5}
-                onValueChange={handlePriceChange}
-                className="my-4"
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">${filters.priceRange[0]}</p>
-                <p className="text-sm text-muted-foreground">${filters.priceRange[1]}</p>
+
+      <Accordion type="single" collapsible defaultValue="item-1">
+        <AccordionItem value="item-1">
+          <AccordionTrigger>Interests</AccordionTrigger>
+          <AccordionContent>
+            {loadingInterests ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            </div>
-          </div>
-          
-          <div>
-            <h3 className="font-medium mb-2">Minimum Rating</h3>
-            <div className="space-y-4">
-              <Slider
-                defaultValue={[filters.rating]}
-                max={5}
-                step={0.5}
-                onValueChange={handleRatingChange}
-                className="my-4"
-              />
-              <div className="flex items-center">
-                <p className="text-sm text-muted-foreground">
-                  {filters.rating > 0 ? `${filters.rating}+ stars` : "Any rating"}
-                </p>
+            ) : errorInterests ? (
+              <div className="text-red-500 text-sm p-2">{errorInterests}</div>
+            ) : (
+              <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                {Object.entries(interestsData).map(([category, items]) => (
+                  <div key={category}>
+                    <h4 className="text-sm font-medium capitalize mb-2">{category}</h4>
+                    <div className="space-y-2">
+                      {items.map((interest) => (
+                        <div key={interest.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`filter-interest-${interest.id}`}
+                            checked={selectedInterests.has(interest.id)}
+                            onCheckedChange={() => handleInterestChange(interest.id)}
+                          />
+                          <Label htmlFor={`filter-interest-${interest.id}`} className="text-sm font-normal cursor-pointer">
+                            {interest.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="single" collapsible>
+        <AccordionItem value="item-1">
+          <AccordionTrigger>Hourly Rate</AccordionTrigger>
+          <AccordionContent className="pt-4">
+            <Slider
+              min={0}
+              max={200}
+              step={5}
+              value={hourlyRateRange}
+              onValueChange={handleRateChange}
+              className="mb-2"
+            />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>${hourlyRateRange[0]}</span>
+              <span>${hourlyRateRange[1] === 200 ? '200+' : hourlyRateRange[1]}</span>
             </div>
-          </div>
-          
-          <div>
-            <h3 className="font-medium mb-2">Interests</h3>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="single" collapsible>
+        <AccordionItem value="item-1">
+          <AccordionTrigger>Availability</AccordionTrigger>
+          <AccordionContent>
             <div className="space-y-2">
-              {Object.keys(categorizedInterests).map(category => (
-                <Collapsible
-                  key={category}
-                  open={expandedCategories.includes(category)}
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-between"
-                      onClick={() => toggleCategory(category)}
-                    >
-                      <span className="capitalize">{category}</span>
-                      {expandedCategories.includes(category) ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pl-4 space-y-1">
-                    {categorizedInterests[category].map(interest => (
-                      <div
-                        key={interest.id}
-                        className="flex items-center py-1"
-                      >
-                        <button
-                          className={`w-5 h-5 rounded-full border flex items-center justify-center mr-2 ${
-                            filters.interests.includes(interest.id)
-                              ? "bg-mentee-primary border-mentee-primary text-white"
-                              : "border-muted-foreground"
-                          }`}
-                          onClick={() => toggleInterest(interest.id)}
-                        >
-                          {filters.interests.includes(interest.id) && (
-                            <Check className="w-3 h-3" />
-                          )}
-                        </button>
-                        <Label
-                          htmlFor={`interest-${interest.id}`}
-                          className="cursor-pointer text-sm flex-1"
-                          onClick={() => toggleInterest(interest.id)}
-                        >
-                          {interest.name}
-                        </Label>
-                      </div>
-                    ))}
-                  </CollapsibleContent>
-                </Collapsible>
+              {availabilityOptions.map((day) => (
+                <div key={day} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`filter-avail-${day}`}
+                    checked={availability.has(day)}
+                    onCheckedChange={() => handleAvailabilityChange(day)}
+                  />
+                  <Label htmlFor={`filter-avail-${day}`} className="text-sm font-normal cursor-pointer">
+                    {day}
+                  </Label>
+                </div>
               ))}
             </div>
-          </div>
-        </div>
-      </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }

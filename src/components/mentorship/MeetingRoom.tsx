@@ -1,129 +1,213 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { OpenVidu } from "openvidu-browser";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { OpenVidu, Session, Publisher, Subscriber, StreamManager, StreamEvent, ExceptionEvent } from "openvidu-browser";
+import { useUser } from "@/context/UserContext";
+import { Button } from "@/components/ui/button";
+import { Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
+
+// Helper function to parse clientData
+const getUserNameFromStream = (streamManager: StreamManager): string => {
+  try {
+    const data = JSON.parse(streamManager.stream.connection.data.split('%/%')[0]);
+    return data?.serverData || 'Participant';
+  } catch (e) {
+    return 'Participant';
+  }
+};
 
 export function MeetingRoom() {
-  const [session, setSession] = useState<any>(null);
-  const [publisher, setPublisher] = useState<any>(null);
-  const [subscribers, setSubscribers] = useState<any[]>([]);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const { user } = useUser();
+  const navigate = useNavigate();
   const location = useLocation();
 
-  // Get sessionId from URL
+  const [OV, setOV] = useState<OpenVidu | null>(null);
+  const [mySession, setMySession] = useState<Session | null>(null);
+  const [myUserName, setMyUserName] = useState<string>(user?.name || user?.email || 'User');
+  const [publisher, setPublisher] = useState<Publisher | null>(null);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+
   const params = new URLSearchParams(location.search);
-  const sessionId = params.get("sessionId") || "MentorSessionDemo";
+  const sessionIdFromUrl = params.get("sessionId") || "MentorSessionDemo";
+  const [sessionId, setSessionId] = useState(sessionIdFromUrl);
 
-  const OPENVIDU_SERVER_URL = "http://localhost:4443";
-  const OPENVIDU_SERVER_SECRET = "MY_SECRET";
+  const getToken = useCallback(async (sessionName: string): Promise<string> => {
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      throw new Error("Authentication token not found.");
+    }
 
-  async function getToken(sessionId: string) {
-    const response = await fetch(OPENVIDU_SERVER_URL + "/api/sessions", {
+    const response = await fetch("/sessions/get-token", {
       method: "POST",
-      body: JSON.stringify({ customSessionId: sessionId }),
+      body: JSON.stringify({ session_name: sessionName }),
       headers: {
-        Authorization: "Basic " + btoa("OPENVIDUAPP:" + OPENVIDU_SERVER_SECRET),
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`
       },
     });
-    const sessionData = await response.json();
-    const sessionIdReturned = sessionData.id;
 
-    const tokenResponse = await fetch(OPENVIDU_SERVER_URL + "/api/tokens", {
-      method: "POST",
-      body: JSON.stringify({ session: sessionIdReturned }),
-      headers: {
-        Authorization: "Basic " + btoa("OPENVIDUAPP:" + OPENVIDU_SERVER_SECRET),
-        "Content-Type": "application/json",
-      },
-    });
-    const tokenData = await tokenResponse.json();
-    return tokenData.token;
-  }
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Failed to get video token" }));
+      throw new Error(errorData.detail || `Error fetching token: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.token;
+  }, []);
+
+  const leaveSession = useCallback(() => {
+    if (mySession) {
+      mySession.disconnect();
+    }
+    setOV(null);
+    setMySession(null);
+    setPublisher(null);
+    setSubscribers([]);
+    navigate(-1);
+  }, [mySession, navigate]);
 
   useEffect(() => {
-    const OV = new OpenVidu();
-    let mySession: any;
-    let myPublisher: any;
+    const openVidu = new OpenVidu();
+    setOV(openVidu);
 
-    (async () => {
+    const initializeSession = async () => {
+      const session = openVidu.initSession();
+
+      session.on("streamCreated", (event: StreamEvent) => {
+        if (event.stream.connection.connectionId !== session.connection.connectionId) {
+          const subscriber = session.subscribe(event.stream, undefined);
+          setSubscribers((subs) => [...subs, subscriber]);
+          console.log("Subscribed to:", getUserNameFromStream(subscriber));
+        }
+      });
+
+      session.on("streamDestroyed", (event: StreamEvent) => {
+        setSubscribers((subs) =>
+          subs.filter((s) => s.stream.streamId !== event.stream.streamId)
+        );
+        console.log("Unsubscribed from:", getUserNameFromStream(event.stream.streamManager));
+      });
+
+      session.on("exception", (exception: ExceptionEvent) => {
+        console.warn("OpenVidu exception:", exception);
+      });
+
       try {
         const token = await getToken(sessionId);
-        mySession = OV.initSession();
+        await session.connect(token, { clientData: myUserName });
 
-        mySession.on("streamCreated", (event: any) => {
-          const subscriber = mySession.subscribe(event.stream, undefined);
-          setSubscribers((subs) => [...subs, subscriber]);
-        });
-
-        mySession.on("streamDestroyed", (event: any) => {
-          setSubscribers((subs) => subs.filter((s) => s !== event.stream.streamManager));
-        });
-
-        await mySession.connect(token);
-
-        myPublisher = OV.initPublisher(undefined, {
+        const pub = openVidu.initPublisher(undefined, {
           audioSource: undefined,
           videoSource: undefined,
-          publishAudio: true,
-          publishVideo: true,
-          resolution: "1280x720",
+          publishAudio: isAudioEnabled,
+          publishVideo: isVideoEnabled,
+          resolution: "640x480",
           frameRate: 30,
           insertMode: "APPEND",
           mirror: true,
         });
 
-        mySession.publish(myPublisher);
-        setSession(mySession);
-        setPublisher(myPublisher);
+        await session.publish(pub);
 
-        // Attach local video
+        setMySession(session);
+        setPublisher(pub);
+
         if (localVideoRef.current) {
-          myPublisher.addVideoElement(localVideoRef.current);
+          pub.addVideoElement(localVideoRef.current);
         }
-      } catch (err) {
-        alert("Could not connect to OpenVidu server. Is it running?");
+
+      } catch (error: any) {
+        console.error("Error connecting to OpenVidu:", error);
+        alert(`Could not connect to the session: ${error.message}`);
       }
-    })();
+    };
+
+    initializeSession();
 
     return () => {
-      if (mySession) mySession.disconnect();
+      if (mySession) {
+        mySession.disconnect();
+      }
+      setOV(null);
+      setMySession(null);
+      setPublisher(null);
+      setSubscribers([]);
     };
-    // eslint-disable-next-line
-  }, [sessionId]);
+  }, [sessionId, getToken]);
 
-  useEffect(() => {
-    if (publisher && localVideoRef.current) {
-      publisher.addVideoElement(localVideoRef.current);
+  const toggleAudio = () => {
+    if (publisher) {
+      const enabled = !isAudioEnabled;
+      publisher.publishAudio(enabled);
+      setIsAudioEnabled(enabled);
     }
-  }, [publisher, localVideoRef]);
+  };
+
+  const toggleVideo = () => {
+    if (publisher) {
+      const enabled = !isVideoEnabled;
+      publisher.publishVideo(enabled);
+      setIsVideoEnabled(enabled);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-black">
-      <div className="flex flex-wrap gap-4 justify-center items-center w-full h-full p-8">
-        {/* Local video */}
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          className="rounded-lg overflow-hidden bg-gray-800 w-[320px] h-[240px]"
-        />
-        {/* Remote videos */}
-        {subscribers.map((sub, idx) => {
-          const remoteRef = (el: HTMLDivElement | null) => {
-            if (el && sub && typeof sub.addVideoElement === "function") {
-              sub.addVideoElement(el);
-            }
-          };
-          return (
-            <div
-              key={idx}
-              ref={remoteRef}
-              className="rounded-lg overflow-hidden bg-gray-800 w-[320px] h-[240px]"
-            />
-          );
-        })}
+    <div className="flex flex-col items-center justify-between w-full h-full bg-black text-white p-4 flex-grow">
+      <div className="flex flex-wrap gap-4 justify-center items-center w-full flex-grow overflow-auto">
+        {publisher && (
+          <div className="relative rounded-lg overflow-hidden bg-gray-800 w-full max-w-xs md:max-w-sm aspect-video">
+            <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+            <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
+              {myUserName} (You)
+            </div>
+            <div className="absolute top-2 right-2 flex gap-1">
+              {!isAudioEnabled && <MicOff size={16} className="text-red-500 bg-black/50 rounded-full p-0.5" />}
+              {!isVideoEnabled && <VideoOff size={16} className="text-red-500 bg-black/50 rounded-full p-0.5" />}
+            </div>
+          </div>
+        )}
+
+        {subscribers.map((sub) => (
+          <div key={sub.stream.streamId} className="relative rounded-lg overflow-hidden bg-gray-800 w-full max-w-xs md:max-w-sm aspect-video">
+            <RemoteVideo subscriber={sub} />
+            <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
+              {getUserNameFromStream(sub)}
+            </div>
+            <div className="absolute top-2 right-2 flex gap-1">
+              {!sub.stream.audioActive && <MicOff size={16} className="text-red-500 bg-black/50 rounded-full p-0.5" />}
+              {!sub.stream.videoActive && <VideoOff size={16} className="text-red-500 bg-black/50 rounded-full p-0.5" />}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-center items-center gap-4 p-4 mt-4 bg-gray-900/50 rounded-lg">
+        <Button onClick={toggleAudio} variant="outline" size="icon" className={`rounded-full ${isAudioEnabled ? 'bg-gray-600 hover:bg-gray-500' : 'bg-red-600 hover:bg-red-500'} text-white border-none`}>
+          {isAudioEnabled ? <Mic size={20} /> : <MicOff size={20} />}
+        </Button>
+        <Button onClick={toggleVideo} variant="outline" size="icon" className={`rounded-full ${isVideoEnabled ? 'bg-gray-600 hover:bg-gray-500' : 'bg-red-600 hover:bg-red-500'} text-white border-none`}>
+          {isVideoEnabled ? <Video size={20} /> : <VideoOff size={20} />}
+        </Button>
+        <Button onClick={leaveSession} variant="destructive" size="icon" className="rounded-full bg-red-600 hover:bg-red-500 border-none">
+          <PhoneOff size={20} />
+        </Button>
       </div>
     </div>
   );
 }
+
+const RemoteVideo = ({ subscriber }: { subscriber: Subscriber }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (subscriber && videoRef.current) {
+      subscriber.addVideoElement(videoRef.current);
+    }
+    return () => {};
+  }, [subscriber]);
+
+  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />;
+};

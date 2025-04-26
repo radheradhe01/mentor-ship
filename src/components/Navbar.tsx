@@ -74,7 +74,7 @@ export function Navbar() {
           )}
         </div>
         
-        {user?.isOnboarded ? (
+        {user ? (
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="text-muted-foreground">
               <Search className="h-5 w-5" />
@@ -90,7 +90,7 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.avatar} alt={user.name || "User"} />
+                    <AvatarImage src={user.avatar || undefined} alt={user.name || "User"} />
                     <AvatarFallback>{getInitials()}</AvatarFallback>
                   </Avatar>
                 </Button>
