@@ -1,15 +1,30 @@
-
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Video, BookOpen, MessageSquare, Users, ChevronRight, Plus, User } from "lucide-react";
+import { VideoCallModal } from "@/components/VideoCallModal";
 
 export function MentorDashboard() {
   const [activeSessions, setActiveSessions] = useState(3);
   const [pendingRequests, setPendingRequests] = useState(2);
-  
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // When mentor starts session, set a flag in localStorage
+  const handleStartSession = () => {
+    localStorage.setItem("session_live", "true");
+    navigate("/meeting-room?sessionId=MentorSessionDemo");
+  };
+
+  // When mentor ends session, clear the flag
+  const handleCloseSession = () => {
+    localStorage.removeItem("session_live");
+    setIsVideoModalOpen(false);
+  };
+
   // Dummy data
   const upcomingSessions = [
     {
@@ -27,7 +42,7 @@ export function MentorDashboard() {
       attendees: 8,
     },
   ];
-  
+
   const menteeRequests = [
     {
       id: "1",
@@ -46,7 +61,7 @@ export function MentorDashboard() {
       avatar: "https://randomuser.me/api/portraits/women/53.jpg",
     },
   ];
-  
+
   const activeMentorships = [
     {
       id: "1",
@@ -89,7 +104,7 @@ export function MentorDashboard() {
           </Button>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <CardHeader className="pb-2">
@@ -103,7 +118,7 @@ export function MentorDashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Pending Requests</CardDescription>
@@ -116,7 +131,7 @@ export function MentorDashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="md:col-span-2 lg:col-span-1">
           <CardHeader className="pb-2">
             <CardDescription>Next Live Session</CardDescription>
@@ -136,14 +151,14 @@ export function MentorDashboard() {
           </CardContent>
         </Card>
       </div>
-      
+
       <Tabs defaultValue="mentorship-requests" className="w-full">
         <TabsList className="mb-4 w-full sm:w-auto flex flex-wrap">
           <TabsTrigger value="mentorship-requests" className="flex-1 sm:flex-none">Mentorship Requests</TabsTrigger>
           <TabsTrigger value="active-mentorships" className="flex-1 sm:flex-none">Active Mentorships</TabsTrigger>
           <TabsTrigger value="upcoming-sessions" className="flex-1 sm:flex-none">Upcoming Sessions</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="mentorship-requests" className="space-y-6">
           {menteeRequests.map((request) => (
             <Card key={request.id} className="overflow-hidden">
@@ -174,7 +189,7 @@ export function MentorDashboard() {
             </Card>
           ))}
         </TabsContent>
-        
+
         <TabsContent value="active-mentorships" className="space-y-6">
           {activeMentorships.map((mentorship) => (
             <Card key={mentorship.id}>
@@ -206,7 +221,7 @@ export function MentorDashboard() {
             </Card>
           ))}
         </TabsContent>
-        
+
         <TabsContent value="upcoming-sessions" className="space-y-6">
           {upcomingSessions.map((session) => (
             <Card key={session.id}>
@@ -230,7 +245,7 @@ export function MentorDashboard() {
                     </div>
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
-                    <Button className="flex-1 sm:flex-none">
+                    <Button className="flex-1 sm:flex-none" onClick={handleStartSession}>
                       <Video className="h-4 w-4 mr-2" />
                       Start Session
                     </Button>
@@ -248,6 +263,7 @@ export function MentorDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+      <VideoCallModal isOpen={isVideoModalOpen} onClose={handleCloseSession} />
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Video, Star, Search, ChevronRight } from "lucide-react";
 import { MentorCard } from "@/components/explore/MentorCard";
 import { mentors } from "@/data/mentors";
+import { VideoCallModal } from "@/components/VideoCallModal";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function MenteeDashboard() {
   // Recommended mentors (first 3 from the mock data)
@@ -62,6 +64,17 @@ export function MenteeDashboard() {
       avatar: "https://randomuser.me/api/portraits/women/44.jpg",
     },
   ];
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [sessionLive, setSessionLive] = useState(false);
+  const navigate = useNavigate();
+
+  // Poll localStorage for session status (for demo; use real-time backend in prod)
+  useEffect(() => {
+    const checkSession = () => setSessionLive(localStorage.getItem("session_live") === "true");
+    checkSession();
+    const interval = setInterval(checkSession, 2000); // check every 2s
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -147,10 +160,6 @@ export function MenteeDashboard() {
                   <span className="text-sm">{mentorship.progress}%</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button className="bg-mentee-primary hover:bg-mentee-secondary">
-                    <Video className="h-4 w-4 mr-2" />
-                    Connect
-                  </Button>
                   <Button variant="ghost" size="icon">
                     <ChevronRight className="h-5 w-5" />
                   </Button>
@@ -185,10 +194,15 @@ export function MenteeDashboard() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button className="bg-mentee-primary hover:bg-mentee-secondary">
-                      <Video className="h-4 w-4 mr-2" />
-                      Join Session
-                    </Button>
+                    {sessionLive && (
+                      <Button
+                        className="bg-mentee-primary hover:bg-mentee-secondary"
+                        onClick={() => navigate("/meeting-room?sessionId=MentorSessionDemo")}
+                      >
+                        <Video className="h-4 w-4 mr-2" />
+                        Join Session
+                      </Button>
+                    )}
                     <Button variant="outline">Reschedule</Button>
                   </div>
                 </div>
@@ -238,6 +252,7 @@ export function MenteeDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+      <VideoCallModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
     </div>
   );
 }
