@@ -37,39 +37,51 @@ export function Navbar() {
               Emiwex
             </span>
           </Link>
-          {user?.isOnboarded && (
+          {user && user.userType === "mentee" && (
             <nav className="hidden md:flex gap-6">
               <Link
-                to={user.userType === "mentor" ? "/mentor/dashboard" : "/mentee/dashboard"}
+                to="/mentee/dashboard"
                 className="text-sm font-medium transition-colors hover:text-primary"
               >
                 Dashboard
               </Link>
-              {user.userType === "mentee" && (
-                <a
-                  href="/games.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium transition-colors hover:text-primary"
-                  style={{ display: 'flex', alignItems: 'center' }}
-                >
-                  Games
-                </a>
-              )}
+              <a
+                href="/games.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium transition-colors hover:text-primary"
+                style={{ display: 'flex', alignItems: 'center' }}
+              >
+                Games
+              </a>
               <Link
                 to="/explore"
                 className="text-sm font-medium transition-colors hover:text-primary"
               >
                 Explore
               </Link>
-              {user.userType === "mentor" && (
-                <Link
-                  to="/mentor/sessions"
-                  className="text-sm font-medium transition-colors hover:text-primary"
-                >
-                  My Sessions
-                </Link>
-              )}
+            </nav>
+          )}
+          {user && user.userType === "mentor" && user.isOnboarded && (
+            <nav className="hidden md:flex gap-6">
+              <Link
+                to="/mentor/dashboard"
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/explore"
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
+                Explore
+              </Link>
+              <Link
+                to="/mentor/sessions"
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
+                My Sessions
+              </Link>
             </nav>
           )}
         </div>
